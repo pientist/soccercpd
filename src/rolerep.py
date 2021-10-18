@@ -6,7 +6,7 @@ from scipy.spatial import distance_matrix
 from scipy.optimize import linear_sum_assignment
 from collections import Counter
 from src.myconstants import *
-from src.preprocessor import Preprocessor
+from src.recordmanager import RecordManager
 from src.match import Match
 
 pd.set_option('display.width', 250)
@@ -154,12 +154,10 @@ class RoleRep:
 
 
 if __name__ == '__main__':
-    pp = Preprocessor()
+    rm = RecordManager()
     activity_ids = [int(os.path.splitext(f)[0]) for f in os.listdir(DIR_UGP_DATA) if f.endswith('.ugp')]
-    activity_records = pp.activity_records[
-        (pp.activity_records[LABEL_DATA_SAVED] == 1) &
-        (pp.activity_records[LABEL_STATS_SAVED] == 0)
-    ]
+    activity_records = rm.activity_records[(rm.activity_records[LABEL_DATA_SAVED] == 1) &
+                                           (rm.activity_records[LABEL_STATS_SAVED] == 0)]
     print()
     print('Activity Records:')
     print(activity_records)
@@ -171,7 +169,7 @@ if __name__ == '__main__':
         print()
         print(f'[{i}] activity_id: {activity_id}, date: {date}, team_name: {team_name}')
 
-        activity_args = pp.load_activity_data(activity_id)
+        activity_args = rm.load_activity_data(activity_id)
         match = Match(*activity_args)
         if match.player_periods[LABEL_PLAYER_IDS].iloc[1:].apply(len).max() >= 10:
             match.construct_inplay_df()
@@ -210,5 +208,5 @@ if __name__ == '__main__':
         # print(match_role_records[[LABEL_ACTIVITY_ID] + HEADER_ROLE_RECORDS])
         # print(match_role_assigns[FULL_HEADER_ROLE_ASSIGNS])
 
-        # pp.activity_records.at[i, LABEL_STATS_SAVED] = 1
-        # pp.save_records(VARNAME_ACTIVITY_RECORDS)
+        # rm.activity_records.at[i, LABEL_STATS_SAVED] = 1
+        # rm.save_records(VARNAME_ACTIVITY_RECORDS)

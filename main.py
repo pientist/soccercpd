@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 import rpy2.robjects.packages as rpackages
 from src.myconstants import *
-from src.preprocessor import Preprocessor
+from src.recordmanager import RecordManager
 from src.match import Match
 from src.footballcpd import FootballCPD
 
@@ -22,12 +22,10 @@ if __name__ == '__main__':
     rpackages.importr('gSeg')
 
     # Select the records of target activities
-    pp = Preprocessor()
+    rm = RecordManager()
     activity_ids = [int(os.path.splitext(f)[0]) for f in os.listdir(DIR_UGP_DATA) if f.endswith('.ugp')]
-    activity_records = pp.activity_records[
-        (pp.activity_records[LABEL_DATA_SAVED] == 1) &
-        (pp.activity_records[LABEL_STATS_SAVED] == 0)
-    ]
+    activity_records = rm.activity_records[(rm.activity_records[LABEL_DATA_SAVED] == 1) &
+                                           (rm.activity_records[LABEL_STATS_SAVED] == 0)]
     print()
     print('Activity Records:')
     print(activity_records)
@@ -41,7 +39,7 @@ if __name__ == '__main__':
         print('=' * 68)
         print(f'[{i}] activity_id: {activity_id}, date: {date}, team_name: {team_name}')
 
-        activity_args = pp.load_activity_data(activity_id)
+        activity_args = rm.load_activity_data(activity_id)
         match = Match(*activity_args)
         if match.player_periods[LABEL_PLAYER_IDS].iloc[1:].apply(lambda x: len(x)).max() >= 10:
             match.construct_inplay_df()

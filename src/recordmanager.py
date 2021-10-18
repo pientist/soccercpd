@@ -3,7 +3,7 @@ import pandas as pd
 from src.myconstants import *
 
 
-class Preprocessor:
+class RecordManager:
     def __init__(self):
         self.activity_records = None
         self.player_records = None
@@ -51,10 +51,3 @@ class Preprocessor:
         roster = player_records[HEADER_ROSTER].drop_duplicates().set_index(LABEL_PLAYER_ID)
         ugp_df = pd.read_pickle(f'{DIR_UGP_DATA}/{activity_id}.ugp')
         return activity_record, player_periods, roster, ugp_df
-
-
-if __name__ == '__main__':
-    pd.set_option('display.width', 300)
-    pd.set_option('display.max_rows', 50)
-    pd.set_option('display.max_columns', 30)
-    pp = Preprocessor()
