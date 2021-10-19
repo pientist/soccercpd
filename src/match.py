@@ -5,6 +5,7 @@ from .myconstants import *
 pd.options.mode.chained_assignment = None
 
 
+# For match data preprocessing
 class Match:
     def __init__(self, activity_record, player_periods, roster, ugp_df, pitch_size=(108, 72)):
         self.record = activity_record
@@ -13,6 +14,7 @@ class Match:
         self.roster = self._upgrade_roster(roster)
         self.pitch_size = pitch_size
 
+    # Synchronize the player movement data with the official roster
     def _upgrade_roster(self, roster):
         player_ids = []
         for player_id in roster.index:
@@ -34,6 +36,7 @@ class Match:
         else:
             return roster.sort_values(LABEL_SQUAD_NUM).reset_index()
 
+    # Compute relative elapsed time in a session from unixtime
     @staticmethod
     def _compute_gametime(current_ut, start_ut):
         seconds_total = current_ut - start_ut
@@ -41,6 +44,7 @@ class Match:
         seconds_rest = seconds_total % SCALAR_TIME
         return '{0:02d}:{1:04.1f}'.format(minutes, seconds_rest)
 
+    # Filter in-play data from the measured data using the start, end, and substitution records
     def construct_inplay_df(self):
         freq = f'{self.ugp_df[LABEL_DURATION].iloc[1].round(1)}S'
         ugp_df_inplay = pd.DataFrame(columns=HEADER_UGP)
@@ -88,13 +92,14 @@ class Match:
 
         self.ugp_df = ugp_df_inplay
 
+    # Rotate the pitch for one of the sessions so that the team always attacks from left to right
     def rotate_pitch(self):
         xlim = self.pitch_size[0]
         ylim = self.pitch_size[1]
         rotated = 2 - self.record[LABEL_ROTATED_SESSION]
         for session in self.player_periods[LABEL_SESSION].unique()[1:]:
-            # If rotated == 0, even-numbered sessions (sessions with session % 2 == 0) are rotated
-            # If rotated == 1, odd-numbered sessions (sessions with session % 2 == 1) are rotated
+            # If rotated == 0, rotate the even-numbered sessions (sessions with session % 2 == 0)
+            # If rotated == 1, rotate the odd-numbered sessions (sessions with session % 2 == 1)
             if session % 2 == rotated:
                 session_idx = self.ugp_df[LABEL_SESSION] == session
                 self.ugp_df.loc[session_idx, LABEL_X] = xlim - self.ugp_df[LABEL_X].loc[session_idx]

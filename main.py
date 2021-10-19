@@ -21,7 +21,7 @@ if __name__ == '__main__':
         utils.install_packages('gSeg')
     rpackages.importr('gSeg')
 
-    # Select the records of target activities with data files but not analyzed yet
+    # Select the records of target matches (having data files but not analyzed yet)
     rm = RecordManager()
     activity_ids = [int(os.path.splitext(f)[0]) for f in os.listdir(DIR_UGP_DATA) if f.endswith('.ugp')]
     activity_records = rm.activity_records[(rm.activity_records[LABEL_DATA_SAVED] == 1) &
@@ -30,6 +30,7 @@ if __name__ == '__main__':
     print('Activity Records:')
     print(activity_records)
 
+    # Perform FootballCPD per match
     for i in activity_records.index:
         tic = datetime.now()
         activity_id = activity_records.at[i, LABEL_ACTIVITY_ID]
@@ -41,9 +42,15 @@ if __name__ == '__main__':
 
         activity_args = rm.load_activity_data(activity_id)
         match = Match(*activity_args)
+
         if match.player_periods[LABEL_PLAYER_IDS].iloc[1:].apply(lambda x: len(x)).max() >= 10:
+            # Filter in-play data from the measured data using the start, end, and substitution records
             match.construct_inplay_df()
+
+            # Rotate the pitch for one of the sessions so that the team always attacks from left to right
             match.rotate_pitch()
+
+            # Applying FootballCPD on the preprocessed match data
             cpd = FootballCPD(match, gseg_type='avg')
             cpd.run()
             if not cpd.fgp_df.empty:
@@ -51,8 +58,12 @@ if __name__ == '__main__':
                 cpd.save_stats()
                 toc = datetime.now()
                 print("The total process takes {:.3f} sec.".format((toc - tic).total_seconds()))
+
         else:
+            # If at least one player has not been measured during the match,
+            # skip the process for the match since the data is incomplete
             print("Not enough players to estimate a formation.")
 
-        # pp.activity_records.at[i, LABEL_STATS_SAVED] = 1
-        # pp.save_records(VARNAME_ACTIVITY_RECORDS)
+        # Set 'stats_saved' value for the match to 1 to avoid redundant executions
+        rm.activity_records.at[i, LABEL_STATS_SAVED] = 1
+        rm.save_records(VARNAME_ACTIVITY_RECORDS)

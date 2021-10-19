@@ -3,6 +3,7 @@ import pandas as pd
 from src.myconstants import *
 
 
+# For convenient data loading and saving
 class RecordManager:
     def __init__(self):
         self.activity_records = None

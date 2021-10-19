@@ -17,7 +17,7 @@ MIN_PHASE_SEC = 600
 MAX_SR = 0.5
 
 
-# Frame-by-frame role assignment algorithm proposed by Bialkowski et al. (2014)
+# Frame-by-frame role assignment proposed by Bialkowski et al. (2014)
 class RoleRep:
     def __init__(self, ugp_df_):
         self.ugp_df = ugp_df_

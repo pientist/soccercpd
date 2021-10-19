@@ -18,6 +18,7 @@ pd.set_option('display.max_rows', 100)
 pd.set_option('display.max_columns', 20)
 
 
+# Formation and role change-point detection (main algorithm)
 class FootballCPD:
     def __init__(self, match, max_sr=0.7, max_pval=0.01, min_period_dur=300, min_form_dist=7, gseg_type='avg'):
         self.MAX_SR = max_sr
@@ -31,9 +32,10 @@ class FootballCPD:
         self.player_periods = self.match.player_periods
 
         self.fgp_df = pd.DataFrame(columns=[LABEL_DATETIME] + HEADER_FGP)
-        self.form_records = pd.DataFrame(columns=HEADER_FORM_PERIOD_RECORDS)
-        self.role_records = pd.DataFrame(columns=HEADER_ROLE_PERIOD_RECORDS)
+        self.form_periods = pd.DataFrame(columns=HEADER_FORM_PERIODS)
+        self.role_periods = pd.DataFrame(columns=HEADER_ROLE_PERIODS)
 
+    # Apply Delaunay triangulation to the given player coordinates to obtain the role-adjacency matrix
     @staticmethod
     def delaunay_edge_mat(coords):
         tri_pts = Delaunay(coords).simplices
@@ -57,11 +59,15 @@ class FootballCPD:
     def _manhattan(mat1, mat2):
         return np.abs(mat1 - mat2).sum()
 
+    # Recursive change-point detection for the input sequence using the discrete g-segmentation
     def _detect_change_times(self, input_seq, sub_dts, mode='form'):
-        input_seq.to_csv(f'{DIR_TEMP_DATA}/temp_seq.csv', index=False)
-
-        metric = self._hamming if mode == 'role' else self._manhattan
+        # if mode == 'form' (FormCPD), the input is a sequence of role-adjacency matrices
+        # if mode == 'role' (RoleCPD), the input a sequence of role permutations
+        metric = self._manhattan if mode == 'form' else self._hamming
         dists = pd.DataFrame(pairwise_distances(input_seq.drop_duplicates(), metric=metric))
+
+        # Save the input sequence and the pairwise distances so that we can use them in the R script below
+        input_seq.to_csv(f'{DIR_TEMP_DATA}/temp_seq.csv', index=False)
         dists.to_csv(f'{DIR_TEMP_DATA}/temp_dists.csv', index=False)
 
         try:
@@ -69,8 +75,8 @@ class FootballCPD:
             end_time = input_seq.index[-1].time()
             print(f"Running 'gSeg' to detect a change-point between {start_time} and {end_time}...")
 
-            cwd = os.getcwd().replace('\\', '/')
-            temp_data_dir = f'{cwd}/{DIR_TEMP_DATA[2:]}'
+            # Run the R function 'gseg1_discrete' to find a change-point
+            temp_data_dir = os.getcwd().replace('\\', '/') + DIR_TEMP_DATA[1:]
             robjects.r(f'''
                 dir = '{temp_data_dir}'
                 seq_path = paste(dir, 'temp_seq.csv', sep='/')
@@ -91,7 +97,9 @@ class FootballCPD:
         except rembedded.RRuntimeError:
             return []
 
-        if robjects.r['pval'][0] > self.MAX_PVAL:
+        # Check whether the detected change-point is significant, using the following three conditions
+        # Condition (1): The p-value of the scan statistic must be less than 0.1
+        if robjects.r['pval'][0] >= self.MAX_PVAL:
             print('Change-point insignificant: The p-value is not small enough\n')
             return []
 
@@ -104,46 +112,51 @@ class FootballCPD:
                 if tds.min().total_seconds() <= 180:
                     chg_dt = sub_dts[tds.argmin()]
 
-            seq1 = input_seq[:chg_dt]
-            seq2 = input_seq[chg_dt:]
-            # form1_dur = (seq1.index[-1] - seq1.index[0]).total_seconds() + 1
-            # form2_dur = (seq2.index[-1] - seq2.index[0]).total_seconds() + 1
-            if (len(seq1) < self.MIN_PERIOD_DUR) or (len(seq2) < self.MIN_PERIOD_DUR):
-                print('Change-point insignificant: One of the periods has not enough duration\n')
-                return []
+        # Condition (2): Both of the segments must last for at least five minutes
+        seq1 = input_seq[:chg_dt]
+        seq2 = input_seq[chg_dt:]
+        if (len(seq1) < self.MIN_PERIOD_DUR) or (len(seq2) < self.MIN_PERIOD_DUR):
+            print('Change-point insignificant: One of the periods has not enough duration\n')
+            return []
 
-            if mode == 'form':
-                form1_edge_mat = seq1.mean(axis=0).values
-                form2_edge_mat = seq2.mean(axis=0).values
-                if self._manhattan(form1_edge_mat, form2_edge_mat) < self.MIN_FORM_DIST:
-                    print('Change-point insignificant: The formation is not changed\n')
-                    return []
-                else:
-                    print(f'A significant fine-tuned change-point at {chg_dt.time()}\n')
-                    prev_chg_dts = self._detect_change_times(seq1, sub_dts)
-                    next_chg_dts = self._detect_change_times(seq2, sub_dts)
-                    return prev_chg_dts + [chg_dt] + next_chg_dts
-            elif mode == 'role':
-                seq1_str = seq1.apply(lambda row: np.array2string(row.values), axis=1)
-                seq2_str = seq2.apply(lambda row: np.array2string(row.values), axis=1)
-                counter1 = Counter(seq1_str)
-                counter2 = Counter(seq2_str)
-                if counter1.most_common(1)[0][0] == counter2.most_common(1)[0][0]:
-                    print('Change-point insignificant: The most frequent permutation is not changed\n')
-                    return []
-                else:
-                    print(f'A significant fine-tuned change-point at {chg_dt.time()}')
-                    print(f'- Frequent permutations before {chg_dt.time()}:')
-                    pprint(counter1.most_common(5))
-                    print(f'- Frequent permutations after {chg_dt.time()}:')
-                    pprint(counter2.most_common(5))
-                    print()
-                    prev_chg_dts = self._detect_change_times(seq1, sub_dts)
-                    next_chg_dts = self._detect_change_times(seq2, sub_dts)
-                    return prev_chg_dts + [chg_dt] + next_chg_dts
+        if mode == 'form':
+            # Condition (3) for FormCPD: The respective mean role-adjacency matrices
+            # from the segments before and after chg_dt are far enough from each other
+            form1_edge_mat = seq1.mean(axis=0).values
+            form2_edge_mat = seq2.mean(axis=0).values
+            if self._manhattan(form1_edge_mat, form2_edge_mat) < self.MIN_FORM_DIST:
+                print('Change-point insignificant: The formation is not changed\n')
+                return []
             else:
+                # If significant, recursively detect another change-points before and after chg_dt
+                print(f'A significant fine-tuned change-point at {chg_dt.time()}\n')
+                prev_chg_dts = self._detect_change_times(seq1, sub_dts)
+                next_chg_dts = self._detect_change_times(seq2, sub_dts)
+                return prev_chg_dts + [chg_dt] + next_chg_dts
+        elif mode == 'role':
+            # Condition (3) for RoleCPD: The most frequent permutations differ between before and after chg_dt
+            seq1_str = seq1.apply(lambda row: np.array2string(row.values), axis=1)
+            seq2_str = seq2.apply(lambda row: np.array2string(row.values), axis=1)
+            counter1 = Counter(seq1_str)
+            counter2 = Counter(seq2_str)
+            if counter1.most_common(1)[0][0] == counter2.most_common(1)[0][0]:
+                print('Change-point insignificant: The most frequent permutation is not changed\n')
                 return []
+            else:
+                # If significant, recursively detect another change-points before and after chg_dt
+                print(f'A significant fine-tuned change-point at {chg_dt.time()}')
+                print(f'- Frequent permutations before {chg_dt.time()}:')
+                pprint(counter1.most_common(5))
+                print(f'- Frequent permutations after {chg_dt.time()}:')
+                pprint(counter2.most_common(5))
+                print()
+                prev_chg_dts = self._detect_change_times(seq1, sub_dts)
+                next_chg_dts = self._detect_change_times(seq2, sub_dts)
+                return prev_chg_dts + [chg_dt] + next_chg_dts
+        else:
+            return []
 
+    # Align corresponding roles from different formation periods
     @staticmethod
     def align_formations(fgp_df, form_period_records):
         base_form_period_record = form_period_records.iloc[0]
@@ -166,10 +179,12 @@ class FootballCPD:
         return fgp_df, form_period_records
 
     def _reassign_base_role(self, fgp_row):
-        base_perm = self.role_records.at[fgp_row[LABEL_ROLE_PERIOD], LABEL_BASE_PERM]
+        base_perm = self.role_periods.at[fgp_row[LABEL_ROLE_PERIOD], LABEL_BASE_PERM]
         fgp_row[LABEL_BASE_ROLE] = base_perm[fgp_row[LABEL_BASE_ROLE]]
         return fgp_row
 
+    # Recompute the 'switch rate' of a frame by the Hamming distance
+    # between the temporary roles and the instructed roles
     @staticmethod
     def _recompute_switch_rate(moment_fgp_df):
         hamming = FootballCPD._hamming(moment_fgp_df[LABEL_ROLE], moment_fgp_df[LABEL_BASE_ROLE])
@@ -177,6 +192,7 @@ class FootballCPD:
         return moment_fgp_df
 
     def run(self):
+        # Initialize formation and role period labels by the session labels
         self.ugp_df[LABEL_FORM_PERIOD] = self.ugp_df[LABEL_SESSION]
         self.ugp_df[LABEL_ROLE_PERIOD] = self.ugp_df[LABEL_SESSION]
 
@@ -186,6 +202,7 @@ class FootballCPD:
             ugp_df = self.ugp_df[self.ugp_df[LABEL_SESSION] == session]
 
             if ugp_df[ugp_df[LABEL_X].notna()].groupby(LABEL_UNIXTIME).apply(len).max() < 10:
+                # If less than 10 players have been measured during the session, skip the process
                 print('Not enough players to estimate a formation.')
                 continue
             else:
@@ -196,6 +213,7 @@ class FootballCPD:
             rolerep.run(freq='1S')
 
             print("\n* Step 2: FormCPD based on role-adjacency matrices")
+            # Exclude situations such as set-piece that are irrelevant to the team formation
             valid_fgp_df = rolerep.fgp_df[rolerep.fgp_df[LABEL_SWITCH_RATE] <= self.MAX_SR]
             role_x = valid_fgp_df.pivot_table(
                 values=LABEL_X_NORM, index=LABEL_DATETIME, columns=LABEL_ROLE, aggfunc='first'
@@ -210,10 +228,13 @@ class FootballCPD:
             else:
                 self.fgp_df = self.fgp_df.append(rolerep.fgp_df)
 
+            # Generate the sequence of role-adjacency matrices
             edge_mats = []
             for coords in role_coords:
                 edge_mats.append(self.delaunay_edge_mat(coords).reshape(-1))
             edge_mats = pd.DataFrame(np.stack(edge_mats, axis=0), index=role_x.dropna().index)
+
+            # Recursive change-point detection for the matrix sequence
             sub_dts = pd.to_datetime(
                 player_periods.loc[player_periods[LABEL_TYPE].isin(['SUB', 'RED']), LABEL_START_DT].values
             )
@@ -230,6 +251,7 @@ class FootballCPD:
             form_chg_dts = [session_start_dt] + form_chg_dts_rounded + [session_end_dt]
 
             print("\n* Step 3: RoleCPD per formation period based on role permutations")
+            # Generate the sequence of role permutations
             perms = valid_fgp_df.pivot_table(
                 values=LABEL_BASE_ROLE, index=LABEL_DATETIME, columns=LABEL_ROLE, aggfunc='first'
             )
@@ -238,7 +260,7 @@ class FootballCPD:
             perms_str = perms.apply(lambda perm: np.array2string(perm.values), axis=1)
 
             for form_chg_idx in range(1, len(form_chg_dts)):
-                form_period = len(self.form_records) + 1
+                form_period = len(self.form_periods) + 1
                 print(f"\nRoleCPD for the formation period {form_period}")
 
                 form_start_dt = form_chg_dts[form_chg_idx - 1]
@@ -249,7 +271,8 @@ class FootballCPD:
                 mean_coords = np.stack([mean_x, mean_y]).T
                 mean_edge_mat = edge_mats[form_start_dt:form_end_dt].mean(axis=0).round(3).values
 
-                self.form_records = self.form_records.append({
+                # Recording the details of the formation period
+                self.form_periods = self.form_periods.append({
                     LABEL_SESSION: session,
                     LABEL_FORM_PERIOD: form_period,
                     LABEL_START_DT: form_start_dt,
@@ -259,12 +282,9 @@ class FootballCPD:
                     LABEL_EDGE_MAT: mean_edge_mat.reshape(10, 10)
                 }, ignore_index=True)
 
+                # Recursive change-point detection for the permutation sequence
                 input_perms = perms[form_start_dt:form_end_dt]
                 input_sub_dts = np.array([dt for dt in sub_dts if (dt >= form_start_dt) and (dt < form_end_dt)])
-                # input_sub_dts = np.array([
-                #     dt.to_pydatetime() for dt in sub_dts
-                #     if (dt >= form_start_dt) and (dt < form_end_dt)
-                # ])
                 role_chg_dts = self._detect_change_times(input_perms, input_sub_dts, mode='role')
 
                 print("Detected role change-points (rounded off to the nearset 10 second mark):")
@@ -278,14 +298,17 @@ class FootballCPD:
                 role_chg_dts.sort()
 
                 for role_chg_idx in range(1, len(role_chg_dts)):
-                    role_period = len(self.role_records) + 1
+                    role_period = len(self.role_periods) + 1
                     role_start_dt = role_chg_dts[role_chg_idx - 1]
                     role_end_dt = role_chg_dts[role_chg_idx]
 
+                    # Set the instructed roles per player by the most frequent permutation in the role period
                     counter = Counter(perms_str[role_start_dt:role_end_dt])
                     base_perm_list = np.fromstring(counter.most_common(1)[0][0][1:-1], dtype=int, sep=' ')
                     base_perm_dict = dict(zip(perms.columns, base_perm_list))
-                    self.role_records = self.role_records.append({
+
+                    # Recording the details of the role period
+                    self.role_periods = self.role_periods.append({
                         LABEL_SESSION: session,
                         LABEL_FORM_PERIOD: form_period,
                         LABEL_ROLE_PERIOD: role_period,
@@ -298,33 +321,35 @@ class FootballCPD:
         if self.fgp_df.empty:
             return
 
-        self.form_records.set_index(LABEL_FORM_PERIOD, inplace=True)
-        self.role_records.set_index(LABEL_ROLE_PERIOD, inplace=True)
+        self.form_periods.set_index(LABEL_FORM_PERIOD, inplace=True)
+        self.role_periods.set_index(LABEL_ROLE_PERIOD, inplace=True)
 
+        # Label formation and role periods to the timestamps in fgp_df
         match_end_dt = self.player_periods[LABEL_END_DT].iloc[-1]
-        form_bins = self.form_records[LABEL_START_DT].tolist() + [match_end_dt]
-        role_bins = self.role_records[LABEL_START_DT].tolist() + [match_end_dt]
+        form_bins = self.form_periods[LABEL_START_DT].tolist() + [match_end_dt]
+        role_bins = self.role_periods[LABEL_START_DT].tolist() + [match_end_dt]
         self.fgp_df[LABEL_FORM_PERIOD] = pd.cut(
-            self.fgp_df[LABEL_DATETIME], bins=form_bins, labels=self.form_records.index
+            self.fgp_df[LABEL_DATETIME], bins=form_bins, labels=self.form_periods.index
         )
         self.fgp_df[LABEL_ROLE_PERIOD] = pd.cut(
-            self.fgp_df[LABEL_DATETIME], bins=role_bins, labels=self.role_records.index
+            self.fgp_df[LABEL_DATETIME], bins=role_bins, labels=self.role_periods.index
         )
 
+        # Reflect the instructed roles and recompute switch rates in fgp_df
         self.fgp_df = self.fgp_df.apply(self._reassign_base_role, axis=1)
         self.fgp_df = self.fgp_df.groupby(LABEL_DATETIME).apply(self._recompute_switch_rate)
-        self.fgp_df, self.form_records = self.align_formations(self.fgp_df, self.form_records)
+        self.fgp_df, self.form_periods = self.align_formations(self.fgp_df, self.form_periods)
 
-        self.form_records = self.form_records.reset_index()[HEADER_FORM_PERIOD_RECORDS]
-        self.role_records = self.role_records.reset_index()[HEADER_ROLE_PERIOD_RECORDS]
+        self.form_periods = self.form_periods.reset_index()[HEADER_FORM_PERIODS]
+        self.role_periods = self.role_periods.reset_index()[HEADER_ROLE_PERIODS]
 
         print()
         print('-' * 68)
-        print('Formation Period Records:')
-        print(self.form_records)
+        print('Formation Periods:')
+        print(self.form_periods)
         print()
-        print('Role Period Records:')
-        print(self.role_records)
+        print('Role Periods:')
+        print(self.role_periods)
 
     def visualize(self):
         import matplotlib.pyplot as plt
@@ -339,13 +364,13 @@ class FootballCPD:
         xlim = 3500
         ylim = 4000
 
-        for idx, form_period in enumerate(self.form_records[LABEL_FORM_PERIOD][:4]):
+        for idx, form_period in enumerate(self.form_periods[LABEL_FORM_PERIOD][:4]):
             fgp_df = self.fgp_df[(self.fgp_df[LABEL_FORM_PERIOD] == form_period) & (self.fgp_df[LABEL_ROLE].notna())]
-            role_coords = np.dot(self.form_records.at[idx, LABEL_COORDS], [[0, 1], [-1, 0]])
-            edge_mat = self.form_records.at[idx, LABEL_EDGE_MAT]
+            role_coords = np.dot(self.form_periods.at[idx, LABEL_COORDS], [[0, 1], [-1, 0]])
+            edge_mat = self.form_periods.at[idx, LABEL_EDGE_MAT]
 
             plt.subplot(gs[0, idx])
-            role_period_records = self.role_records[self.role_records[LABEL_FORM_PERIOD] == form_period]
+            role_period_records = self.role_periods[self.role_periods[LABEL_FORM_PERIOD] == form_period]
             role_period_from = role_period_records[LABEL_ROLE_PERIOD].iloc[0]
             if len(role_period_records) == 1:
                 plt.title(f'Role Period {role_period_from}', fontsize=20)
@@ -394,8 +419,8 @@ class FootballCPD:
 
         duration = 0
         vline_idxs = []
-        for idx in self.role_records.index[:-1]:
-            duration += self.role_records.at[idx, LABEL_DURATION]
+        for idx in self.role_periods.index[:-1]:
+            duration += self.role_periods.at[idx, LABEL_DURATION]
             vline_idxs.append(math.ceil(duration / SCALAR_TIME))
         plt.vlines(vline_idxs, ymin=0, ymax=len(role_assigns_2d), colors='k', linestyles='--')
 
@@ -430,10 +455,10 @@ class FootballCPD:
 
         # Save form_periods
         if form:
-            self.form_records[LABEL_ACTIVITY_ID] = activity_id_
+            self.form_periods[LABEL_ACTIVITY_ID] = activity_id_
             form_dir = f'{DIR_DATA}/form_{self.gseg_type}'
             if not os.path.exists(form_dir):
                 os.mkdir(form_dir)
             form_path = f'{form_dir}/{activity_id_}.pkl'
-            self.form_records[FULL_HEADER_FORM_PERIOD_RECORDS].to_pickle(form_path)
+            self.form_periods[FULL_HEADER_FORM_PERIODS].to_pickle(form_path)
             print(f"'{form_path}' saving done.")

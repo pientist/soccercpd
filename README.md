@@ -11,5 +11,5 @@ Here is an example of applying FootballCPD to a match. It shows that the match i
 ![timeline](img/timeline_formation.png)<br>
 
 ## References
-- Bialkowski, A., Lucey, P., Carr, P., Yue, Y., Sridharan,S., and Matthews, I. (2014). Large-scale analysis of soccer matches using spatiotemporal tracking data. In IEEE International Conference on Data Mining.
+- Bialkowski, A., Lucey, P., Carr, P., Yue, Y., Sridharan, S., and Matthews, I. (2014). Large-scale analysis of soccer matches using spatiotemporal tracking data. In IEEE International Conference on Data Mining.
 - Song, H. and Chen, H. (2020). Asymptotic distribution-free change-point detection for data with repeated observations.
