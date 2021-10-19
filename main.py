@@ -21,7 +21,7 @@ if __name__ == '__main__':
         utils.install_packages('gSeg')
     rpackages.importr('gSeg')
 
-    # Select the records of target activities
+    # Select the records of target activities with data files but not analyzed yet
     rm = RecordManager()
     activity_ids = [int(os.path.splitext(f)[0]) for f in os.listdir(DIR_UGP_DATA) if f.endswith('.ugp')]
     activity_records = rm.activity_records[(rm.activity_records[LABEL_DATA_SAVED] == 1) &
