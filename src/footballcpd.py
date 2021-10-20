@@ -2,6 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 from datetime import timedelta
+from scipy.stats import multivariate_normal
 from scipy.spatial import Delaunay
 from sklearn.metrics import pairwise_distances
 from scipy.spatial import distance_matrix
@@ -20,11 +21,12 @@ pd.set_option('display.max_columns', 20)
 
 # Formation and role change-point detection (main algorithm)
 class FootballCPD:
-    def __init__(self, match, max_sr=0.7, max_pval=0.01, min_period_dur=300, min_form_dist=7, gseg_type='avg'):
-        self.MAX_SR = max_sr
-        self.MAX_PVAL = max_pval
-        self.MIN_PERIOD_DUR = min_period_dur
-        self.MIN_FORM_DIST = min_form_dist
+    def __init__(self, match, max_sr=MAX_SWITCH_RATE, max_pval=MAX_PVAL,
+                 min_pdur=MIN_PERIOD_DUR, min_fdist=MIN_FORM_DIST, gseg_type='avg'):
+        self.max_sr = max_sr
+        self.max_pval = max_pval
+        self.min_pdur = min_pdur
+        self.min_fdist = min_fdist
         self.gseg_type = gseg_type
 
         self.match = match
@@ -67,8 +69,9 @@ class FootballCPD:
         dists = pd.DataFrame(pairwise_distances(input_seq.drop_duplicates(), metric=metric))
 
         # Save the input sequence and the pairwise distances so that we can use them in the R script below
-        input_seq.to_csv(f'{DIR_TEMP_DATA}/temp_seq.csv', index=False)
-        dists.to_csv(f'{DIR_TEMP_DATA}/temp_dists.csv', index=False)
+        temp_data_dir = os.getcwd().replace('\\', '/') + DIR_TEMP_DATA[1:]
+        input_seq.to_csv(f'{temp_data_dir}/temp_seq.csv', index=False)
+        dists.to_csv(f'{temp_data_dir}/temp_dists.csv', index=False)
 
         try:
             start_time = input_seq.index[0].time()
@@ -76,7 +79,6 @@ class FootballCPD:
             print(f"Running 'gSeg' to detect a change-point between {start_time} and {end_time}...")
 
             # Run the R function 'gseg1_discrete' to find a change-point
-            temp_data_dir = os.getcwd().replace('\\', '/') + DIR_TEMP_DATA[1:]
             robjects.r(f'''
                 dir = '{temp_data_dir}'
                 seq_path = paste(dir, 'temp_seq.csv', sep='/')
@@ -99,7 +101,7 @@ class FootballCPD:
 
         # Check whether the detected change-point is significant, using the following three conditions
         # Condition (1): The p-value of the scan statistic must be less than 0.1
-        if robjects.r['pval'][0] >= self.MAX_PVAL:
+        if robjects.r['pval'][0] >= self.max_pval:
             print('Change-point insignificant: The p-value is not small enough\n')
             return []
 
@@ -115,7 +117,7 @@ class FootballCPD:
         # Condition (2): Both of the segments must last for at least five minutes
         seq1 = input_seq[:chg_dt]
         seq2 = input_seq[chg_dt:]
-        if (len(seq1) < self.MIN_PERIOD_DUR) or (len(seq2) < self.MIN_PERIOD_DUR):
+        if (len(seq1) < self.min_pdur) or (len(seq2) < self.min_pdur):
             print('Change-point insignificant: One of the periods has not enough duration\n')
             return []
 
@@ -124,7 +126,7 @@ class FootballCPD:
             # from the segments before and after chg_dt are far enough from each other
             form1_edge_mat = seq1.mean(axis=0).values
             form2_edge_mat = seq2.mean(axis=0).values
-            if self._manhattan(form1_edge_mat, form2_edge_mat) < self.MIN_FORM_DIST:
+            if self._manhattan(form1_edge_mat, form2_edge_mat) < self.min_fdist:
                 print('Change-point insignificant: The formation is not changed\n')
                 return []
             else:
@@ -213,8 +215,8 @@ class FootballCPD:
             rolerep.run(freq='1S')
 
             print("\n* Step 2: FormCPD based on role-adjacency matrices")
-            # Exclude situations such as set-piece that are irrelevant to the team formation
-            valid_fgp_df = rolerep.fgp_df[rolerep.fgp_df[LABEL_SWITCH_RATE] <= self.MAX_SR]
+            # Exclude situations such as set-pieces that are irrelevant to the team formation
+            valid_fgp_df = rolerep.fgp_df[rolerep.fgp_df[LABEL_SWITCH_RATE] <= self.max_sr]
             role_x = valid_fgp_df.pivot_table(
                 values=LABEL_X_NORM, index=LABEL_DATETIME, columns=LABEL_ROLE, aggfunc='first'
             )
@@ -346,10 +348,11 @@ class FootballCPD:
         print()
         print('-' * 68)
         print('Formation Periods:')
-        print(self.form_periods)
+        print(self.form_periods[HEADER_FORM_PERIODS[:-2]])
         print()
         print('Role Periods:')
-        print(self.role_periods)
+        print(self.role_periods[HEADER_ROLE_PERIODS[:-1]])
+        print()
 
     def visualize(self):
         import matplotlib.pyplot as plt
@@ -439,7 +442,6 @@ class FootballCPD:
 
     def save_stats(self, fgp=True, form=True):
         activity_id_ = self.match.record[LABEL_ACTIVITY_ID]
-        print()
 
         # Save fgp_df
         if fgp:
@@ -460,5 +462,5 @@ class FootballCPD:
             if not os.path.exists(form_dir):
                 os.mkdir(form_dir)
             form_path = f'{form_dir}/{activity_id_}.pkl'
-            self.form_periods[FULL_HEADER_FORM_PERIODS].to_pickle(form_path)
+            self.form_periods[[LABEL_ACTIVITY_ID] + HEADER_FORM_PERIODS].to_pickle(form_path)
             print(f"'{form_path}' saving done.")

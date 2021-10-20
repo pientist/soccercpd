@@ -13,9 +13,6 @@ pd.set_option('display.width', 250)
 pd.set_option('display.max_rows', 100)
 pd.set_option('display.max_columns', 20)
 
-MIN_PHASE_SEC = 600
-MAX_SR = 0.5
-
 
 # Frame-by-frame role assignment proposed by Bialkowski et al. (2014)
 class RoleRep:
@@ -23,7 +20,6 @@ class RoleRep:
         self.ugp_df = ugp_df_
         self.fgp_df = None
         self.role_records = None
-        self.role_assigns = None
 
     @staticmethod
     def _normalize_locs(moment_fgp_df):
@@ -58,7 +54,7 @@ class RoleRep:
 
     @staticmethod
     def _estimate_mvn(fgp_df):
-        valid_locs = fgp_df[fgp_df[LABEL_SWITCH_RATE] <= MAX_SR][[LABEL_X_NORM, LABEL_Y_NORM]]
+        valid_locs = fgp_df[fgp_df[LABEL_SWITCH_RATE] <= MAX_SWITCH_RATE][[LABEL_X_NORM, LABEL_Y_NORM]]
         if len(valid_locs) < 30:
             return np.nan
         else:
@@ -145,68 +141,56 @@ class RoleRep:
         session = self.ugp_df[LABEL_SESSION].iloc[0]
         self.role_records[LABEL_SESSION] = session
 
-    # def summarize(self):
-        # roster_by_phase = self.fgp_df[HEADER_ROLE_ASSIGNS[:4]].drop_duplicates()
-        # valid_fgp_df = self.fgp_df[self.fgp_df[LABEL_SWITCH_RATE] <= MAX_SR]
-        # role_assigns = valid_fgp_df.groupby(LABEL_PLAYER_ID)[LABEL_ROLE].apply(self._most_common)
-        # role_assigns = role_assigns.dropna().reset_index().rename(columns={0: LABEL_ROLE}).astype(int)
-        # self.role_assigns = pd.merge(roster_by_phase, role_assigns).sort_values(LABEL_PHASE, ignore_index=True)
 
-
-if __name__ == '__main__':
-    rm = RecordManager()
-    activity_ids = [int(os.path.splitext(f)[0]) for f in os.listdir(DIR_UGP_DATA) if f.endswith('.ugp')]
-    activity_records = rm.activity_records[(rm.activity_records[LABEL_DATA_SAVED] == 1) &
-                                           (rm.activity_records[LABEL_STATS_SAVED] == 0)]
-    print()
-    print('Activity Records:')
-    print(activity_records)
-
-    for i in activity_records.index:
-        activity_id = activity_records.at[i, LABEL_ACTIVITY_ID]
-        date = activity_records.at[i, LABEL_DATE]
-        team_name = activity_records.at[i, LABEL_TEAM_NAME]
-        print()
-        print(f'[{i}] activity_id: {activity_id}, date: {date}, team_name: {team_name}')
-
-        activity_args = rm.load_activity_data(activity_id)
-        match = Match(*activity_args)
-        if match.player_periods[LABEL_PLAYER_IDS].iloc[1:].apply(len).max() >= 10:
-            match.construct_inplay_df()
-            match.rotate_pitch()
-
-            match.player_periods[LABEL_FORM_PERIOD] = match.player_periods[LABEL_SESSION]
-            match.player_periods[LABEL_ROLE_PERIOD] = match.player_periods[LABEL_SESSION]
-            match.ugp_df[LABEL_FORM_PERIOD] = match.ugp_df[LABEL_SESSION]
-            match.ugp_df[LABEL_ROLE_PERIOD] = match.ugp_df[LABEL_SESSION]
-            match_role_records = pd.DataFrame(columns=HEADER_ROLE_RECORDS)
-            # match_role_assigns = pd.DataFrame(columns=HEADER_ROLE_ASSIGNS)
-
-            match_fgp_df = pd.DataFrame(columns=[LABEL_DATETIME] + HEADER_FGP)
-            for j in match.ugp_df[LABEL_ROLE_PERIOD].unique():
-                form_ugp_df = match.ugp_df[match.ugp_df[LABEL_ROLE_PERIOD] == j]
-                rolerep = RoleRep(form_ugp_df)
-                print(f'\nRunning RoleRep for session {j}...')
-                rolerep.run(freq='1S')
-                # match_role_records = match_role_records.append(rolerep.role_records, sort=True)
-                # match_role_assigns = match_role_assigns.append(rolerep.role_assigns, sort=True)
-                match_fgp_df = match_fgp_df.append(rolerep.fgp_df)
-
-            match_fgp_path = f'{DIR_DATA}/fgp_avg/{activity_id}.csv'
-            match_fgp_df.to_csv(match_fgp_path, index=False, encoding='utf-8-sig')
-            print(f"'{match_fgp_path}' saving done.")
-
-        else:
-            print('Not enough players to estimate a formation.')
-            continue
-
-        # match_role_records[LABEL_ACTIVITY_ID] = activity_id
-        # match_role_assigns[LABEL_ACTIVITY_ID] = activity_id
-        # match_role_assigns = pd.merge(match.roster[HEADER_ROSTER], match_role_assigns)
-        # match_role_assigns.sort_values([LABEL_SUBPHASE, LABEL_PHASE], inplace=True, ignore_index=True)
-        # print()
-        # print(match_role_records[[LABEL_ACTIVITY_ID] + HEADER_ROLE_RECORDS])
-        # print(match_role_assigns[FULL_HEADER_ROLE_ASSIGNS])
-
-        # rm.activity_records.at[i, LABEL_STATS_SAVED] = 1
-        # rm.save_records(VARNAME_ACTIVITY_RECORDS)
+# if __name__ == '__main__':
+#     rm = RecordManager()
+#     activity_ids = [int(os.path.splitext(f)[0]) for f in os.listdir(DIR_UGP_DATA) if f.endswith('.ugp')]
+#     activity_records = rm.activity_records[(rm.activity_records[LABEL_DATA_SAVED] == 1) &
+#                                            (rm.activity_records[LABEL_STATS_SAVED] == 0)]
+#     print()
+#     print('Activity Records:')
+#     print(activity_records)
+#
+#     for i in activity_records.index:
+#         activity_id = activity_records.at[i, LABEL_ACTIVITY_ID]
+#         date = activity_records.at[i, LABEL_DATE]
+#         team_name = activity_records.at[i, LABEL_TEAM_NAME]
+#         print()
+#         print(f'[{i}] activity_id: {activity_id}, date: {date}, team_name: {team_name}')
+#
+#         activity_args = rm.load_activity_data(activity_id)
+#         match = Match(*activity_args)
+#         if match.player_periods[LABEL_PLAYER_IDS].iloc[1:].apply(len).max() >= 10:
+#             match.construct_inplay_df()
+#             match.rotate_pitch()
+#
+#             match.player_periods[LABEL_FORM_PERIOD] = match.player_periods[LABEL_SESSION]
+#             match.player_periods[LABEL_ROLE_PERIOD] = match.player_periods[LABEL_SESSION]
+#             match.ugp_df[LABEL_FORM_PERIOD] = match.ugp_df[LABEL_SESSION]
+#             match.ugp_df[LABEL_ROLE_PERIOD] = match.ugp_df[LABEL_SESSION]
+#             match_role_records = pd.DataFrame(columns=HEADER_ROLE_RECORDS)
+#
+#             match_fgp_df = pd.DataFrame(columns=[LABEL_DATETIME] + HEADER_FGP)
+#             for j in match.ugp_df[LABEL_ROLE_PERIOD].unique():
+#                 form_ugp_df = match.ugp_df[match.ugp_df[LABEL_ROLE_PERIOD] == j]
+#                 rolerep = RoleRep(form_ugp_df)
+#                 print(f'\nRunning RoleRep for session {j}...')
+#                 rolerep.run(freq='1S')
+#                 match_role_records = match_role_records.append(rolerep.role_records, sort=True)
+#                 match_fgp_df = match_fgp_df.append(rolerep.fgp_df)
+#
+#             match_fgp_path = f'{DIR_DATA}/fgp_avg/{activity_id}.csv'
+#             match_fgp_df.to_csv(match_fgp_path, index=False, encoding='utf-8-sig')
+#             print(f"'{match_fgp_path}' saving done.")
+#
+#         else:
+#             print('Not enough players to estimate a formation.')
+#             continue
+#
+#         match_role_records[LABEL_ACTIVITY_ID] = activity_id
+#         match_role_records = match_role_records[[LABEL_ACTIVITY_ID] + HEADER_ROLE_RECORDS]
+#         print()
+#         print(match_role_records)
+#
+#         # rm.activity_records.at[i, LABEL_STATS_SAVED] = 1
+#         # rm.save_records(VARNAME_ACTIVITY_RECORDS)

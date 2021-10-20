@@ -7,7 +7,7 @@ pd.options.mode.chained_assignment = None
 
 # For match data preprocessing
 class Match:
-    def __init__(self, activity_record, player_periods, roster, ugp_df, pitch_size=(108, 72)):
+    def __init__(self, activity_record, player_periods, roster, ugp_df, pitch_size=(10800, 7200)):
         self.record = activity_record
         self.player_periods = player_periods
         self.ugp_df = ugp_df
