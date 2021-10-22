@@ -1,6 +1,10 @@
 import os
 import pandas as pd
 from datetime import datetime
+
+# Uncomment this code if it raises an error
+# os.environ['R_HOME'] = "C:\Program Files\R\R-3.6.0"  # or whereever your R is installed"
+
 import rpy2.robjects.packages as rpackages
 from src.myconstants import *
 from src.recordmanager import RecordManager
@@ -65,5 +69,5 @@ if __name__ == '__main__':
             print("Not enough players to estimate a formation.")
 
         # Set 'stats_saved' value for the match to 1 to avoid redundant executions
-        rm.activity_records.at[i, LABEL_STATS_SAVED] = 1
-        rm.save_records(VARNAME_ACTIVITY_RECORDS)
+        # rm.activity_records.at[i, LABEL_STATS_SAVED] = 1
+        # rm.save_records(VARNAME_ACTIVITY_RECORDS)

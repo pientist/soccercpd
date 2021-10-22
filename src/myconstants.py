@@ -1,11 +1,11 @@
 # File paths and variable names
-DIR_DATA = './data'
-DIR_UGP_DATA = f'./data/ugp'
-DIR_TEMP_DATA = f'./data/temp'
+DIR_DATA = '../data'
+DIR_UGP_DATA = f'{DIR_DATA}/ugp'
+DIR_TEMP_DATA = f'{DIR_DATA}/temp'
 
-PATH_ACTIVITY_RECORDS = f'./data/activity_records.csv'
-PATH_PLAYER_RECORDS = f'./data/player_records.csv'
-PATH_PLAYER_PERIODS = f'./data/player_periods.pkl'
+PATH_ACTIVITY_RECORDS = f'{DIR_DATA}/activity_records.csv'
+PATH_PLAYER_RECORDS = f'{DIR_DATA}/player_records.csv'
+PATH_PLAYER_PERIODS = f'{DIR_DATA}/player_periods.pkl'
 
 VARNAME_ACTIVITY_RECORDS = 'activity_records'
 VARNAME_PLAYER_RECORDS = 'player_records'

@@ -15,19 +15,27 @@ This repository includes the source code for FootballCPD, and tracking data from
 We cannot share the entire dataset due to the security issue, but every process except for the formation clustering can be reproduced using this sample data since applying our method to a match does not require data from other matches. For the formation clustering step in Section 4.1.3 of the paper, we offer `data/form_periods.pkl` that contains the mean role locations and mean role-adjacency matrices of all the detected formations in our dataset.<br>
 
 ## Getting Started
-We have implemented the role representation algorithm using Python on our own, while adopted the R package `gSeg` for discrete g-segmentation. Therefore, **both Python and R need to be installed for executing the code.** The version we haved used in this study are as follows:
+We have implemented the role representation algorithm using Python on our own, while adopted the R package `gSeg` for discrete g-segmentation. Therefore, **both Python and R need to be installed for executing the code.** The version we have used in this study are as follows:
 
 - Python 3.8
 - R 3.6.0
 
-To perform the whole process at once, we utilize the Python package `rpy2` to run the R script with  `gSeg` inside our Python implementation. However, we found that **the M1 chip by Apple does not support binaries for `rpy2`'s API mode in Python, raising a memory error.**
+To perform the whole process at once, we utilize the Python package `rpy2` to run the R script with  `gSeg` inside our Python implementation. We found that **the M1 chip by Apple does not support binaries for `rpy2`'s API mode in Python, raising a memory error.** (So please use another processor such as the Intel chip.)
 
-After installing the necessory languages, you need to install necessary packages listed in `requirements.txt`. (Make sure that you are in the correct working directory that contains our `requirements.txt`.)
+After installing the necessary languages, you need to install the packages listed in `requirements.txt`. Make sure that you are in the correct working directory that contains our `requirements.txt`.
 ```
 pip install -r requirements.txt
 ```
 
-Subsequently, you can run the algorithm for the sample match data (`data/ugp/245.ugp`) simply by executing the `main.py` file. For further analyses, open `tutorial.ipynb` and run the cells in order from the above. (Section 4 except for 4.1.3)
+Subsequently, please download the sample match data (named `245.ugp`) from the following Google Drive link and move it into the directory `data/ugp`.
+- Link for the data: https://bit.ly/3E9W3QV
+
+Finally, you can run the algorithm for the sample match data simply by executing `src/main.py`.
+```
+python -m src.main
+```
+
+For further analyses, open `tutorial.ipynb` and run the cells in order from the above. (Section 4 except for 4.1.3)
 
 You can also reproduce the results described in the paper by executing the following notebooks:
 - `src/experiment0_formaiont_clustering.ipynb` (Section 4.1.3)

@@ -69,9 +69,8 @@ class FootballCPD:
         dists = pd.DataFrame(pairwise_distances(input_seq.drop_duplicates(), metric=metric))
 
         # Save the input sequence and the pairwise distances so that we can use them in the R script below
-        temp_data_dir = os.getcwd().replace('\\', '/') + DIR_TEMP_DATA[1:]
-        input_seq.to_csv(f'{temp_data_dir}/temp_seq.csv', index=False)
-        dists.to_csv(f'{temp_data_dir}/temp_dists.csv', index=False)
+        input_seq.to_csv(f'{DIR_TEMP_DATA}/temp_seq.csv', index=False)
+        dists.to_csv(f'{DIR_TEMP_DATA}/temp_dists.csv', index=False)
 
         try:
             start_time = input_seq.index[0].time()
@@ -80,7 +79,7 @@ class FootballCPD:
 
             # Run the R function 'gseg1_discrete' to find a change-point
             robjects.r(f'''
-                dir = '{temp_data_dir}'
+                dir = '{DIR_TEMP_DATA}'
                 seq_path = paste(dir, 'temp_seq.csv', sep='/')
                 seq = read.csv(seq_path)
                 dists_path = paste(dir, 'temp_dists.csv', sep='/')
