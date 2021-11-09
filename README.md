@@ -1,8 +1,7 @@
 <div align="center">
-	<h1>
-		FootballCPD:<br>
-		Formation and Role Change-Point Detection in Football Matches from Spatiotemporal Tracking Data
-	</h1>
+	<h2>
+		FootballCPD: Formation and Role Change-Point Detection in Football Matches from Spatiotemporal Tracking Data
+	</h2>
 	<br>
 </div>
 
