@@ -5,7 +5,9 @@
 </div>
 
 ## Original Paper
-**FootballCPD: Formation and role change-point detection in football matches from spatiotemporal tracking data**, Hyunsung Kim, Bit Kim, Dongwook Chung, Jinsung Yoon, and Sang-Ki Ko, 2021.<br>
+This repository includes the source code for the following paper and tracking data from a sample match (`245.ugp`).
+- **FootballCPD: Formation and role change-point detection in football matches from spatiotemporal tracking data**, Hyunsung Kim, Bit Kim, Dongwook Chung, Jinsung Yoon, and Sang-Ki Ko, 2021.<br>
+Please cite when using our code or the sample tracking data (`245.ugp`).
 
 ## Introduction
 **FootballCPD** is a change-point detection framework that distinguishes tactically intended formation and role changes from temporary changes in football matches using spatiotemporal tracking data.<br>
@@ -15,8 +17,7 @@ Here is an example of applying FootballCPD to a match. It shows that the match i
 
 ![timeline](img/timeline_formation.png)<br>
 
-This repository includes the source code for FootballCPD, and tracking data from a sample match (`data/ugp/245.ugp`).
-We cannot share the entire dataset due to the security issue, but every process except for the formation clustering can be reproduced using this sample data since applying our method to a match does not require data from other matches. For the formation clustering step in Section 4.1.3 of the paper, we offer `data/form_periods.pkl` that contains the mean role locations and mean role-adjacency matrices of all the detected formations in our dataset.<br>
+We cannot share the entire dataset due to the security issue, but every process except for the formation clustering can be reproduced using the sample match data (`245.ugp`) since applying our method to a match does not require data from other matches. For the formation clustering step in Section 4.1.3 of the paper, we offer `data/form_periods.pkl` that contains the mean role locations and mean role-adjacency matrices of all the detected formations in our dataset.<br>
 
 ## Getting Started
 We have implemented the role representation algorithm using Python on our own, while adopted the R package `gSeg` for discrete g-segmentation. Therefore, **both Python and R need to be installed for executing the code.** The version we have used in this study are as follows:
