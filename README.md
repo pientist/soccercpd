@@ -1,9 +1,12 @@
 <div align="center">
-	<h2>
-		FootballCPD: Formation and Role Change-Point Detection in Football Matches from Spatiotemporal Tracking Data
-	</h2>
-	<br>
+	<h1>
+		FootballCPD
+	</h1>
 </div>
+
+## Original Paper
+**FootballCPD: Formation and role change-point detection in football matches from spatiotemporal tracking data.**<br>
+Hyunsung Kim, Bit Kim, Dongwook Chung, Jinsung Yoon, and Sang-Ki Ko (2021).<br>
 
 ## Introduction
 **FootballCPD** is a change-point detection framework that distinguishes tactically intended formation and role changes from temporary changes in football matches using spatiotemporal tracking data.<br>
