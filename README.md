@@ -1,5 +1,8 @@
 <div align="center">
-	<h1>FootballCPD: Formation and Role Change-Point Detection in Football Matches from Spatiotemporal Tracking Data</h1>
+	<h1>
+		FootballCPD:<br>
+		Formation and Role Change-Point Detection in Football Matches from Spatiotemporal Tracking Data
+	</h1>
 	<br>
 </div>
 
@@ -42,6 +45,8 @@ You can also reproduce the results described in the paper by executing the follo
 - `src/experiment1_model_evaluation.ipynb` (Section 5.1)
 - `src/experiment2_switching pattern discovery.ipynb` (Section 5.2)
 - `src/supplement_case_study.ipynb` (Section 2 in the supplementary paper)<br>
+
+Lastly, we visualize our results as animations using Tableau 2020.4. The full-version videos are available in https://bit.ly/3GaaAOc (animation for a single team) and https://bit.ly/3m2XUR5 (animation for both teams competing in a match) with the description in Section 3 in the supplementary paper.<br>
 
 ## References
 - Bialkowski, A., Lucey, P., Carr, P., Yue, Y., Sridharan, S., and Matthews, I. (2014). Large-scale analysis of soccer matches using spatiotemporal tracking data. In IEEE International Conference on Data Mining.
