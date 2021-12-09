@@ -42,9 +42,9 @@ python -m src.main
 For further analyses, open `tutorial.ipynb` and run the cells in order from the above. (Section 4 except for 4.1.3)
 
 You can also reproduce the results described in the paper by executing the following notebooks:
-- `src/experiment0_formaiont_clustering.ipynb` (Section 4.1.3)
-- `src/experiment1_model_evaluation.ipynb` (Section 5.1)
-- `src/experiment2_switching pattern discovery.ipynb` (Section 5.2)
+- `src/0_formaiont_clustering.ipynb` (Section 4.1.3)
+- `src/1_model_evaluation.ipynb` (Section 5.1)
+- `src/2_switching pattern discovery.ipynb` (Section 5.2)
 - `src/supplement_case_study.ipynb` (Section 2 in the supplementary paper)<br>
 
 Lastly, we visualize our results as animations using Tableau 2020.4. The full-version videos are available in https://bit.ly/3GaaAOc (animation for a single team) and https://bit.ly/3m2XUR5 (animation for both teams competing in a match) with the description in Section 3 in the supplementary paper.<br>

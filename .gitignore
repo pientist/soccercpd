@@ -1,6 +1,6 @@
 # Private files
-data_private/
-src_private/
+private_data/
+private_src/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
