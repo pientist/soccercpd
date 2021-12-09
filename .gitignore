@@ -1,6 +1,6 @@
-# Image files
-data/report_avg/
-data/report_union/
+# Private files
+data_private/
+src_private/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
