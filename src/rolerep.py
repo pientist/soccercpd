@@ -6,7 +6,7 @@ from scipy.spatial import distance_matrix
 from scipy.optimize import linear_sum_assignment
 from collections import Counter
 from src.myconstants import *
-from src.recordmanager import RecordManager
+from src.record_manager import RecordManager
 from src.match import Match
 
 pd.set_option('display.width', 250)

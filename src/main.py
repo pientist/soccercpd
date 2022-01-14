@@ -7,7 +7,7 @@ from datetime import datetime
 
 import rpy2.robjects.packages as rpackages
 from src.myconstants import *
-from src.recordmanager import RecordManager
+from src.record_manager import RecordManager
 from src.match import Match
 from src.footballcpd import FootballCPD
 
