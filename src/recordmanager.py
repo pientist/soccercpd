@@ -5,21 +5,22 @@ from src.myconstants import *
 
 # For convenient data loading and saving
 class RecordManager:
-    def __init__(self):
+    def __init__(self, root_dir=DIR_DATA):
+        self.root_dir = root_dir
         self.activity_records = None
         self.player_records = None
         self.player_periods = None
         self.metadata = pd.DataFrame([
-            [VARNAME_ACTIVITY_RECORDS, HEADER_ACTIVITY_RECORDS, PATH_ACTIVITY_RECORDS, '.csv'],
-            [VARNAME_PLAYER_RECORDS, HEADER_PLAYER_RECORDS, PATH_PLAYER_RECORDS, '.csv'],
-            [VARNAME_PLAYER_PERIODS, HEADER_PLAYER_PERIODS, PATH_PLAYER_PERIODS, '.pkl'],
-        ], columns=[LABEL_VARNAME, LABEL_HEADER, LABEL_PATH, LABEL_EXTENSION])
+            [VARNAME_ACTIVITY_RECORDS, HEADER_ACTIVITY_RECORDS, '.csv'],
+            [VARNAME_PLAYER_RECORDS, HEADER_PLAYER_RECORDS, '.csv'],
+            [VARNAME_PLAYER_PERIODS, HEADER_PLAYER_PERIODS, '.pkl'],
+        ], columns=[LABEL_VARNAME, LABEL_HEADER, LABEL_EXTENSION])
         self._load_records()
 
     def _load_records(self):
         for i in self.metadata.index:
             metadata = self.metadata.loc[i]
-            path = metadata[LABEL_PATH]
+            path = f'{self.root_dir}/{metadata[LABEL_VARNAME]}{metadata[LABEL_EXTENSION]}'
             if not os.path.exists(path):
                 if metadata[LABEL_HEADER] is None:
                     records = dict()
@@ -32,12 +33,12 @@ class RecordManager:
                     records = pd.read_csv(path, header=0, encoding='cp949')
             else:
                 records = pd.read_pickle(path)
-            setattr(self, metadata[LABEL_VARNAME], records)
+            setattr(self, metadata[LABEL_VARNAME], records[metadata[LABEL_HEADER]])
 
     def save_records(self, attr=VARNAME_ACTIVITY_RECORDS):
         metadata = self.metadata[self.metadata[LABEL_VARNAME] == attr].iloc[0]
         records = getattr(self, attr)
-        path = metadata[LABEL_PATH]
+        path = f'{self.root_dir}/{metadata[LABEL_VARNAME]}{metadata[LABEL_EXTENSION]}'
         if metadata[LABEL_EXTENSION] == '.csv':
             records.to_csv(path, index=False, encoding='utf-8-sig')
             print(f"'{path}' saving done.")

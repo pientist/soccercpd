@@ -2,6 +2,13 @@
 private_data/
 private_src/
 
+# Data files
+data/ugp/*.csv
+data/fgp_avg/
+data/form_avg/
+data/report_avg/
+data/role_avg/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
