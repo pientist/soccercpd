@@ -10,6 +10,7 @@ pd.set_option('display.width', 250)
 pd.set_option('display.max_rows', 100)
 pd.set_option('display.max_columns', 20)
 plt.rcParams['font.size'] = 15
+# plt.rcParams['font.family'] = 'Arial'
 
 
 class FormManager:
@@ -18,22 +19,15 @@ class FormManager:
         self.role_records = role_records
 
     @staticmethod
-    def delaunay_dist(form1, form2):
-        cost_mat = distance_matrix(form1['coords'], form2['coords'])
-        _, perm = linear_sum_assignment(cost_mat)
-        edge_mat1 = form1['edge_mat']
-        edge_mat2 = form2['edge_mat'][perm][:, perm]
-        return np.abs(edge_mat1 - edge_mat2).sum()
-
-    def align_group(self, group, group_type=LABEL_FORMATION):
-        form_periods = self.form_periods[self.form_periods[group_type] == group].reset_index()
-    
+    def align_group(form_periods):
         role_aligns = pd.DataFrame(np.vstack(form_periods[LABEL_COORDS].values), columns=[LABEL_X, LABEL_Y])
         coloring_model = AgglomerativeClustering(n_clusters=10).fit(role_aligns.values)
+
         role_aligns[LABEL_ACTIVITY_ID] = 0
         role_aligns[LABEL_FORM_PERIOD] = 0
         role_aligns[LABEL_BASE_ROLE] = np.repeat(np.arange(10)[np.newaxis, :] + 1, form_periods.shape[0], axis=0).flatten()
         role_aligns[LABEL_ALIGNED_ROLE] = coloring_model.labels_
+
         mean_coords = role_aligns.groupby(LABEL_ALIGNED_ROLE)[[LABEL_X, LABEL_Y]].mean().values
         
         for i in range(3):
@@ -65,9 +59,10 @@ class FormManager:
 
     def align(self, group_type=LABEL_FORMATION):
         role_aligns_list = []
-        for f in np.sort(self.form_periods[group_type].unique()):
-            role_aligns_list.append(self.align_group(f, group_type))
-            print(f"Roles aligned for {group_type} '{f}'")
+        for group in np.sort(self.form_periods[group_type].unique()):
+            form_periods = self.form_periods[self.form_periods[group_type] == group].reset_index()
+            role_aligns_list.append(FormManager.align_group(form_periods))
+            print(f"Roles aligned for {group_type} '{group}'")
 
         role_aligns = pd.concat(role_aligns_list)
         self.role_records = pd.merge(pd.merge(
@@ -75,10 +70,11 @@ class FormManager:
         ), role_aligns).sort_values([LABEL_ACTIVITY_ID, LABEL_ROLE_PERIOD, LABEL_SQUAD_NUM], ignore_index=True)
 
     def visualize_group(self, group, group_type=LABEL_FORMATION, paint=True, annotate=True):
-        if LABEL_ALIGNED_ROLE in self.role_records.columns:
+        if self.role_records is not None and LABEL_ALIGNED_ROLE in self.role_records.columns:
             role_records = self.role_records[self.role_records[group_type] == group]
         else:
-            role_records = self.align_group(group, group_type)
+            form_periods = self.form_periods[self.form_periods[group_type] == group].reset_index()
+            role_records = FormManager.align_group(form_periods)
         colors = role_records[LABEL_ALIGNED_ROLE] if paint else 'gray'
 
         plt.figure()
@@ -98,11 +94,14 @@ class FormManager:
         plt.hlines([-ylim, ylim], xmin=-xlim, xmax=xlim, color='k', zorder=0)
         plt.axis('off')
 
-    def visualize(self, group_type=LABEL_FORMATION, paint=True, annotate=True, save=False):
+    def visualize(self, group_type=LABEL_FORMATION, ignore_outliers=False, paint=True, annotate=True, save=False):
         counts = self.form_periods[group_type].value_counts()
-        for f in np.sort(self.form_periods[group_type].unique()):
-            self.visualize_group(f, group_type, paint, annotate)
+        for group in np.sort(self.form_periods[group_type].unique()):
+            if ignore_outliers and (group == -1 or group == 'others'):
+                continue
+            self.visualize_group(group, group_type, paint, annotate)
             if save:
-                plt.savefig(f'img/clustering_{f}.pdf', bbox_inches='tight') 
-            plt.title(f"{group_type} '{f}' - {counts[f]} periods.")
+                plt.savefig(f'img/{group_type}_{group}.pdf', bbox_inches='tight')
+            title = f"{group_type[0].upper() + group_type[1:]} {group} -  {counts[group]} periods."
+            plt.title(title)
 
