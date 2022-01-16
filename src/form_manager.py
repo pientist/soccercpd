@@ -69,6 +69,27 @@ class FormManager:
             self.role_records, self.form_periods[[LABEL_ACTIVITY_ID, LABEL_FORM_PERIOD, LABEL_FORMATION]]
         ), role_aligns).sort_values([LABEL_ACTIVITY_ID, LABEL_ROLE_PERIOD, LABEL_SQUAD_NUM], ignore_index=True)
 
+    @staticmethod
+    def visualize_single_graph(coords, edge_mat):
+        plt.figure(figsize=(10, 7))
+        plt.scatter(coords[:, 0], coords[:, 1], c=np.arange(10)+1,
+                    s=700, vmin=0.5, vmax=10.5, cmap='tab10', zorder=1)
+
+        for i in np.arange(10):
+            plt.annotate(i + 1, xy=coords[i], ha='center', va='center',
+                        c='w', fontsize=20, fontweight='bold', zorder=2)
+            for j in np.arange(10):
+                plt.plot(coords[[i, j], 0], coords[[i, j], 1],
+                        linewidth=edge_mat[i, j] ** 2 * 10, c='k', zorder=0)
+
+        xlim = 3000
+        ylim = 2400
+        plt.xlim(-xlim - 500, xlim + 500)
+        plt.ylim(-ylim - 500, ylim + 500)
+        plt.vlines([-xlim, 0, xlim], ymin=-ylim, ymax=ylim, color='k', zorder=0)
+        plt.hlines([-ylim, ylim], xmin=-xlim, xmax=xlim, color='k', zorder=0)
+        plt.axis('off')
+
     def visualize_group(self, group, group_type=LABEL_FORMATION, paint=True, annotate=True):
         if self.role_records is not None and LABEL_ALIGNED_ROLE in self.role_records.columns:
             role_records = self.role_records[self.role_records[group_type] == group]
@@ -104,4 +125,3 @@ class FormManager:
                 plt.savefig(f'img/{group_type}_{group}.pdf', bbox_inches='tight')
             title = f"{group_type[0].upper() + group_type[1:]} {group} -  {counts[group]} periods."
             plt.title(title)
-

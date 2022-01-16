@@ -202,7 +202,7 @@ class FootballCPD:
             player_periods = self.player_periods[self.player_periods[LABEL_SESSION] == session]
             ugp_df = self.ugp_df[self.ugp_df[LABEL_SESSION] == session]
 
-            if ugp_df[ugp_df[LABEL_X].notna()].groupby(LABEL_UNIXTIME).apply(len).max() < 10:
+            if ugp_df[ugp_df[LABEL_X].notna()].groupby(LABEL_UNIXTIME)[LABEL_PLAYER_ID].apply(len).max() < 10:
                 # If less than 10 players have been measured during the session, skip the process
                 print('Not enough players to estimate a formation.')
                 continue
