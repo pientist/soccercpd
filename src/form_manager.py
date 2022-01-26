@@ -70,14 +70,20 @@ class FormManager:
         ), role_aligns).sort_values([LABEL_ACTIVITY_ID, LABEL_ROLE_PERIOD, LABEL_SQUAD_NUM], ignore_index=True)
 
     @staticmethod
-    def visualize_single_graph(coords, edge_mat):
+    def visualize_single_graph(coords, edge_mat, labels=None):
         plt.figure(figsize=(10, 7))
         plt.scatter(coords[:, 0], coords[:, 1], c=np.arange(10)+1,
-                    s=700, vmin=0.5, vmax=10.5, cmap='tab10', zorder=1)
+                    s=1000, vmin=0.5, vmax=10.5, cmap='tab10', zorder=1)
+
+        if labels is None:
+            labels = np.arange(11)
+            fontsize = 20
+        else:
+            fontsize = 12
 
         for i in np.arange(10):
-            plt.annotate(i + 1, xy=coords[i], ha='center', va='center',
-                        c='w', fontsize=20, fontweight='bold', zorder=2)
+            plt.annotate(labels[i+1], xy=coords[i], ha='center', va='center',
+                        c='w', fontsize=fontsize, fontweight='bold', zorder=2)
             for j in np.arange(10):
                 plt.plot(coords[[i, j], 0], coords[[i, j], 1],
                         linewidth=edge_mat[i, j] ** 2 * 10, c='k', zorder=0)
