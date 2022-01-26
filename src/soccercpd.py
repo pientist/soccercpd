@@ -20,7 +20,7 @@ pd.set_option('display.max_columns', 20)
 
 
 # Formation and role change-point detection (main algorithm)
-class FootballCPD:
+class SoccerCPD:
     def __init__(self, match, max_sr=MAX_SWITCH_RATE, max_pval=MAX_PVAL,
                  min_pdur=MIN_PERIOD_DUR, min_fdist=MIN_FORM_DIST, gseg_type='avg'):
         self.max_sr = max_sr
@@ -188,7 +188,7 @@ class FootballCPD:
     # between the temporary roles and the instructed roles
     @staticmethod
     def _recompute_switch_rate(moment_fgp_df):
-        hamming = FootballCPD._hamming(moment_fgp_df[LABEL_ROLE], moment_fgp_df[LABEL_BASE_ROLE])
+        hamming = SoccerCPD._hamming(moment_fgp_df[LABEL_ROLE], moment_fgp_df[LABEL_BASE_ROLE])
         moment_fgp_df[LABEL_SWITCH_RATE] = hamming / len(moment_fgp_df)
         return moment_fgp_df
 

@@ -105,7 +105,7 @@ SCALAR_MILLI = 1000
 SCALAR_MICRO = 1000000
 SCALAR_TIME = 60
 
-# Parameters for FootballCPD
+# Hyperparameters for SoccerCPD
 MAX_SWITCH_RATE = 0.8
 MAX_PVAL = 0.01
 MIN_PERIOD_DUR = 300
