@@ -53,12 +53,16 @@ class RoleRep:
         return fgp_df.groupby(LABEL_DATETIME).apply(RoleRep._normalize_locs)
 
     @staticmethod
-    def _estimate_mvn(fgp_df):
-        valid_locs = fgp_df[fgp_df[LABEL_SWITCH_RATE] <= MAX_SWITCH_RATE][[LABEL_X_NORM, LABEL_Y_NORM]]
-        if len(valid_locs) < 30:
+    def _estimate_mvn(df, col_x=LABEL_X_NORM, col_y=LABEL_Y_NORM, filter=True):
+        if filter:
+            coords = df[df[LABEL_SWITCH_RATE] <= MAX_SWITCH_RATE][[col_x, col_y]]
+        else:
+            coords = df[[col_x, col_y]]
+            
+        if filter and len(coords) < 30:
             return np.nan
         else:
-            return multivariate_normal(valid_locs.mean(), valid_locs.cov())
+            return multivariate_normal(coords.mean(), coords.cov())
 
     @staticmethod
     def update_params(fgp_df, by_phase=False):

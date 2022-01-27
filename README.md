@@ -1,18 +1,18 @@
 <div align="center">
 	<h1>
-		FootballCPD
+		SoccerCPD
 	</h1>
 </div>
 
 ## Original Paper
 This repository includes the source code for the following paper and tracking data from a sample match (`245.ugp`). Please cite when using our code or the sample match data.
-- **FootballCPD: Formation and role change-point detection in football matches from spatiotemporal tracking data**, Hyunsung Kim, Bit Kim, Dongwook Chung, Jinsung Yoon, and Sang-Ki Ko, 2021.
+- **SoccerCPD: Formation and role change-point detection in football matches from spatiotemporal tracking data**, Hyunsung Kim, Bit Kim, Dongwook Chung, Jinsung Yoon, and Sang-Ki Ko, 2021.
 
 ## Introduction
-**FootballCPD** is a change-point detection framework that distinguishes tactically intended formation and role changes from temporary changes in football matches using spatiotemporal tracking data.<br>
+**SoccerCPD** is a change-point detection framework that distinguishes tactically intended formation and role changes from temporary changes in football matches using spatiotemporal tracking data.<br>
 It first assigns roles to players frame-by-frame based on the role representation (Bialkowski et al., 2014) and performs two-step nonparametric change-point detections (Song and Chen, 2020): (1) formation change-point detection (FormCPD) based on the sequence of role-adjacency matrices and (2) role change-point detection (RoleCPD) based on the sequence of role permutations.<br>
 
-Here is an example of applying FootballCPD to a match. It shows that the match is split into four formation periods (where the team formation is consistent) and five role periods (where the player-role assignment remains constant).<br>
+Here is an example of applying SoccerCPD to a match. It shows that the match is split into four formation periods (where the team formation is consistent) and five role periods (where the player-role assignment remains constant).<br>
 
 ![timeline](img/timeline_formation.png)<br>
 
@@ -43,10 +43,11 @@ For further analyses, open `tutorial.ipynb` and run the cells in order from the 
 
 You can also reproduce the results described in the paper by executing the following notebooks:
 
-- `src/0_formaiont_clustering.ipynb` (Section 4.1.3)
-- `src/1_model_evaluation.ipynb` (Section 5.1)
-- `src/2_switching_pattern_discovery.ipynb` (Section 5.2)
-- `src/supplement_case_study.ipynb` (Section 2 in the supplementary paper)<br>
+- `src/1_formaiont_clustering.ipynb` (Section 4.1.3)
+- `src/2_role_labeling.ipynb` (Section 4.2.3)
+- `src/3_model_evaluation.ipynb` (Section 5.1)
+- `src/4_switching_pattern_discovery.ipynb` (Section 5.2)
+- `src/appendix_case_study.ipynb` (Section 2 of Appendix)<br>
 
 Lastly, we visualize our results as animations using Tableau 2020.4. The full-version videos are available in https://bit.ly/3GaaAOc (animation for a single team) and https://bit.ly/3m2XUR5 (animation for both teams competing in a match) with the description in Section 3 in the supplementary paper.<br>
 

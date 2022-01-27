@@ -9,7 +9,7 @@ import rpy2.robjects.packages as rpackages
 from src.myconstants import *
 from src.record_manager import RecordManager
 from src.match import Match
-from src.footballcpd import FootballCPD
+from src.soccercpd import SoccerCPD
 
 pd.set_option('display.width', 250)
 pd.set_option('display.max_rows', 100)
@@ -18,7 +18,7 @@ pd.set_option('display.max_columns', 20)
 
 if __name__ == '__main__':
 
-    # Install and import the R package 'gSeg' to be used in FootballCPD
+    # Install and import the R package 'gSeg' to be used in SoccerCPD
     utils = rpackages.importr('utils')
     utils.chooseCRANmirror(ind=1)
     if not rpackages.isinstalled('gSeg'):
@@ -34,7 +34,7 @@ if __name__ == '__main__':
     print('Activity Records:')
     print(activity_records)
 
-    # Perform FootballCPD per match
+    # Perform SoccerCPD per match
     for i in activity_records.index:
         tic = datetime.now()
         activity_id = activity_records.at[i, LABEL_ACTIVITY_ID]
@@ -54,8 +54,8 @@ if __name__ == '__main__':
             # Rotate the pitch for one of the sessions so that the team always attacks from left to right
             match.rotate_pitch()
 
-            # Apply FootballCPD on the preprocessed match data
-            cpd = FootballCPD(match, gseg_type='avg')
+            # Apply SoccerCPD on the preprocessed match data
+            cpd = SoccerCPD(match, gseg_type='avg')
             cpd.run()
             if not cpd.fgp_df.empty:
                 cpd.visualize()
