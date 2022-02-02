@@ -2,15 +2,17 @@ import os
 import numpy as np
 import pandas as pd
 from datetime import timedelta
-from scipy.stats import multivariate_normal
 from scipy.spatial import Delaunay
 from sklearn.metrics import pairwise_distances
 from scipy.spatial import distance_matrix
 from scipy.optimize import linear_sum_assignment
 from collections import Counter
 from pprint import pprint
+
 import rpy2.robjects as robjects
 import rpy2.rinterface_lib.embedded as rembedded
+import ruptures as rpt
+
 from src.myconstants import *
 from src.rolerep import RoleRep
 
@@ -21,13 +23,17 @@ pd.set_option('display.max_columns', 20)
 
 # Formation and role change-point detection (main algorithm)
 class SoccerCPD:
-    def __init__(self, match, max_sr=MAX_SWITCH_RATE, max_pval=MAX_PVAL,
-                 min_pdur=MIN_PERIOD_DUR, min_fdist=MIN_FORM_DIST, gseg_type='avg'):
+    def __init__(self, match, formcpd_type='gseg_avg', rolecpd_type='gseg_avg',
+                 max_sr=MAX_SWITCH_RATE, max_pval=MAX_PVAL, min_pdur=MIN_PERIOD_DUR, min_fdist=MIN_FORM_DIST):
+        self.formcpd_type = formcpd_type
+        self.rolecpd_type = rolecpd_type
+        # Available FormCPD types: 'gseg_avg', 'gseg_union', 'kernel_linear', 'kernel_rbf', 'kernel_cosine', 'rank'
+        # Available RoleCPD types: 'gseg_avg', 'gseg_union'
+
         self.max_sr = max_sr
         self.max_pval = max_pval
         self.min_pdur = min_pdur
         self.min_fdist = min_fdist
-        self.gseg_type = gseg_type
 
         self.match = match
         self.ugp_df = self.match.ugp_df
@@ -61,57 +67,81 @@ class SoccerCPD:
     def _manhattan(mat1, mat2):
         return np.abs(mat1 - mat2).sum()
 
-    # Recursive change-point detection for the input sequence using the discrete g-segmentation
+    # Recursive change-point detection for the input sequence
     def _detect_change_times(self, input_seq, sub_dts, mode='form'):
         # if mode == 'form' (FormCPD), the input is a sequence of role-adjacency matrices
         # if mode == 'role' (RoleCPD), the input a sequence of role permutations
-        metric = self._manhattan if mode == 'form' else self._hamming
-        dists = pd.DataFrame(pairwise_distances(input_seq.drop_duplicates(), metric=metric))
 
-        # Save the input sequence and the pairwise distances so that we can use them in the R script below
-        input_seq.to_csv(f'{DIR_TEMP_DATA}/temp_seq.csv', index=False)
-        dists.to_csv(f'{DIR_TEMP_DATA}/temp_dists.csv', index=False)
+        start_time = input_seq.index[0].time()
+        end_time = input_seq.index[-1].time()
 
-        try:
-            start_time = input_seq.index[0].time()
-            end_time = input_seq.index[-1].time()
-            print(f"Running 'gSeg' to detect a change-point between {start_time} and {end_time}...")
+        if (mode == 'role') or ('gseg' in self.formcpd_type):
+            metric = self._manhattan if mode == 'form' else self._hamming
+            dists = pd.DataFrame(pairwise_distances(input_seq.drop_duplicates(), metric=metric))
 
-            # Run the R function 'gseg1_discrete' to find a change-point
-            robjects.r(f'''
-                dir = '{DIR_TEMP_DATA}'
-                seq_path = paste(dir, 'temp_seq.csv', sep='/')
-                seq = read.csv(seq_path)
-                dists_path = paste(dir, 'temp_dists.csv', sep='/')
-                dists = read.csv(dists_path)
+            # Save the input sequence and the pairwise distances so that we can use them in the R script below
+            input_seq.to_csv(f'{DIR_TEMP_DATA}/temp_seq.csv', index=False)
+            dists.to_csv(f'{DIR_TEMP_DATA}/temp_dists.csv', index=False)
 
-                n = dim(seq)[1]
-                edge_mat = nnl(dists, 1)
-                seq_str = do.call(paste, seq)
-                ids = match(seq_str, unique(seq_str))
-                output = gseg1_discrete(n, edge_mat, ids, statistics="generalized", n0=0.1*n, n1=0.9*n)
-                
-                chg_idx = output$scanZ$generalized$tauhat_{self.gseg_type[0]}
-                pval = output$pval.appr$generalized_{self.gseg_type[0]}
-            ''')
+            try:
+                print(f"Applying g-segmentation to the sequence between {start_time} and {end_time}...")
 
-        except rembedded.RRuntimeError:
-            return []
+                if mode == 'form':
+                    gseg_type = self.formcpd_type.split('_')[1][0]
+                else:
+                    gseg_type = self.rolecpd_type.split('_')[1][0]
 
-        # Check whether the detected change-point is significant, using the following three conditions
-        # Condition (1): The p-value of the scan statistic must be less than 0.1
-        if robjects.r['pval'][0] >= self.max_pval:
-            print('Change-point insignificant: The p-value is not small enough\n')
-            return []
+                # Run the R function 'gseg1_discrete' to find a change-point
+                robjects.r(f'''
+                    dir = '{DIR_TEMP_DATA}'
+                    seq_path = paste(dir, 'temp_seq.csv', sep='/')
+                    seq = read.csv(seq_path)
+                    dists_path = paste(dir, 'temp_dists.csv', sep='/')
+                    dists = read.csv(dists_path)
+
+                    n = dim(seq)[1]
+                    edge_mat = nnl(dists, 1)
+                    seq_str = do.call(paste, seq)
+                    ids = match(seq_str, unique(seq_str))
+                    output = gseg1_discrete(n, edge_mat, ids, statistics="generalized", n0=0.1*n, n1=0.9*n)
+                    
+                    chg_idx = output$scanZ$generalized$tauhat_{gseg_type}
+                    pval = output$pval.appr$generalized_{gseg_type}
+                ''')
+
+            except rembedded.RRuntimeError:
+                return []
+
+            # Check whether the detected change-point is significant, using the following three conditions
+            # Condition (1): The p-value of the scan statistic must be less than 0.1
+            if robjects.r['pval'][0] >= self.max_pval:
+                print('Change-point insignificant: The p-value is not small enough\n')
+                return []
+            else:
+                chg_idx = robjects.r['chg_idx'][0]
+
+        elif 'kernel' in self.formcpd_type:
+            print(f"Applying kernel-based CPD to the sequence between {start_time} and {end_time}...")
+            kernel_type = self.formcpd_type.split('_')[1]
+            algo = rpt.Binseg(model=kernel_type).fit(input_seq.values)
+            chg_idx = algo.predict(n_bkps=1)[0]
+        
+        elif 'rank' in self.formcpd_type:
+            print(f"Applying rank-based CPD to the sequence between {start_time} and {end_time}...")
+            algo = rpt.Binseg(model='rank').fit(input_seq.values)
+            chg_idx = algo.predict(n_bkps=1)[0]
 
         else:
-            chg_dt = input_seq.index[robjects.r['chg_idx'][0]]
+            raise ValueError('Invalid formcpd_type')
 
-            # Fine-tune chg_dt to the closest substitution time (if exists)
-            if len(sub_dts) > 0:
-                tds = np.abs(sub_dts - chg_dt.to_pydatetime())
-                if tds.min().total_seconds() <= 180:
-                    chg_dt = sub_dts[tds.argmin()]
+        chg_dt = input_seq.index[chg_idx]
+        print(chg_idx, chg_dt)
+
+        # Fine-tune chg_dt to the closest substitution time (if exists)
+        if len(sub_dts) > 0:
+            tds = np.abs(sub_dts - chg_dt.to_pydatetime())
+            if tds.min().total_seconds() <= 180:
+                chg_dt = sub_dts[tds.argmin()]
 
         # Condition (2): Both of the segments must last for at least five minutes
         seq1 = input_seq[:chg_dt]
@@ -134,6 +164,7 @@ class SoccerCPD:
                 prev_chg_dts = self._detect_change_times(seq1, sub_dts)
                 next_chg_dts = self._detect_change_times(seq2, sub_dts)
                 return prev_chg_dts + [chg_dt] + next_chg_dts
+
         elif mode == 'role':
             # Condition (3) for RoleCPD: The most frequent permutations differ between before and after chg_dt
             seq1_str = seq1.apply(lambda row: np.array2string(row.values), axis=1)
@@ -154,8 +185,9 @@ class SoccerCPD:
                 prev_chg_dts = self._detect_change_times(seq1, sub_dts)
                 next_chg_dts = self._detect_change_times(seq2, sub_dts)
                 return prev_chg_dts + [chg_dt] + next_chg_dts
+
         else:
-            return []
+            raise ValueError('Invalid mode')
 
     # Align corresponding roles from different formation periods
     @staticmethod
@@ -198,7 +230,7 @@ class SoccerCPD:
         self.ugp_df[LABEL_ROLE_PERIOD] = self.ugp_df[LABEL_SESSION]
 
         for session in self.ugp_df[LABEL_SESSION].unique():
-            print(f"\n---------------------------- Session {session} -----------------------------")
+            print(f"\n{'-' * 33} Session {session} {'-' * 34}")
             player_periods = self.player_periods[self.player_periods[LABEL_SESSION] == session]
             ugp_df = self.ugp_df[self.ugp_df[LABEL_SESSION] == session]
 
@@ -431,10 +463,13 @@ class SoccerCPD:
         plt.xlabel('session-time')
         plt.ylabel('player')
 
-        report_dir = f'{DIR_DATA}/report_{self.gseg_type}'
+        report_dir = f'{DIR_DATA}/{self.formcpd_type}/report'
+        report_path = f'{report_dir}/{self.match.record[LABEL_ACTIVITY_ID]}.png'
+        if not os.path.exists(f'{DIR_DATA}/{self.formcpd_type}'):
+            os.mkdir(f'{DIR_DATA}/{self.formcpd_type}')
         if not os.path.exists(report_dir):
             os.mkdir(report_dir)
-        report_path = f'{report_dir}/{self.match.record[LABEL_ACTIVITY_ID]}.png'
+
         plt.savefig(report_path)
         plt.close(fig)
         print(f"'{report_path}' saving done.")
@@ -442,12 +477,15 @@ class SoccerCPD:
     def save_stats(self, fgp=True, form=True):
         activity_id_ = self.match.record[LABEL_ACTIVITY_ID]
 
+        if not os.path.exists(f'{DIR_DATA}/{self.formcpd_type}'):
+            os.mkdir(f'{DIR_DATA}/{self.formcpd_type}')
+
         # Save fgp_df
         if fgp:
             fgp_df = pd.merge(
                 self.match.roster[HEADER_ROSTER], self.fgp_df
             ).sort_values(by=[LABEL_SQUAD_NUM, LABEL_DATETIME])
-            fgp_dir = f'{DIR_DATA}/fgp_{self.gseg_type}'
+            fgp_dir = f'{DIR_DATA}/{self.formcpd_type}/fgp'
             if not os.path.exists(fgp_dir):
                 os.mkdir(fgp_dir)
             fgp_path = f'{fgp_dir}/{activity_id_}.csv'
@@ -457,7 +495,7 @@ class SoccerCPD:
         # Save form_periods
         if form:
             self.form_periods[LABEL_ACTIVITY_ID] = activity_id_
-            form_dir = f'{DIR_DATA}/form_{self.gseg_type}'
+            form_dir = f'{DIR_DATA}/{self.formcpd_type}/form'
             if not os.path.exists(form_dir):
                 os.mkdir(form_dir)
             form_path = f'{form_dir}/{activity_id_}.pkl'

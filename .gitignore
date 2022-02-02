@@ -4,10 +4,13 @@ private_src/
 
 # Data files
 data/ugp/*.csv
-data/fgp_avg/
-data/form_avg/
-data/report_avg/
-data/role_avg/
+data/temp/*.csv
+data/gseg_avg/
+data/gseg_union/
+data/kernel_linear/
+data/kernel_rbf/
+data/kernel_cosine/
+data/rank/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
