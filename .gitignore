@@ -3,14 +3,14 @@ private_data/
 private_src/
 
 # Data files
-data/ugp/*.csv
-data/temp/*.csv
+data/ugp/*.ugp
 data/gseg_avg/
 data/gseg_union/
 data/kernel_linear/
 data/kernel_rbf/
 data/kernel_cosine/
 data/rank/
+data/temp/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

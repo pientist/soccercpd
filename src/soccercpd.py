@@ -377,7 +377,7 @@ class SoccerCPD:
         self.role_periods = self.role_periods.reset_index()[HEADER_ROLE_PERIODS]
 
         print()
-        print('-' * 68)
+        print('-' * 78)
         print('Formation Periods:')
         print(self.form_periods[HEADER_FORM_PERIODS[:-2]])
         print()

@@ -129,5 +129,5 @@ class FormManager:
             self.visualize_group(group, group_type, paint, annotate)
             if save:
                 plt.savefig(f'img/{group_type}_{group}.pdf', bbox_inches='tight')
-            title = f"{group_type[0].upper() + group_type[1:]} {group} -  {counts[group]} periods."
+            title = f"{group_type[0].upper() + group_type[1:]} {group} -  {counts[group]} periods"
             plt.title(title)
