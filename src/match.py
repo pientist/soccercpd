@@ -7,15 +7,21 @@ pd.options.mode.chained_assignment = None
 
 # For match data preprocessing
 class Match:
-    def __init__(self, activity_record, player_periods, roster, ugp_df, pitch_size=(10800, 7200)):
+    def __init__(self, activity_record, player_periods, roster, ugp_df, pitch_size=(10800, 7200), outliers=None):
         self.record = activity_record
         self.player_periods = player_periods
         self.ugp_df = ugp_df
-        self.roster = self._upgrade_roster(roster)
+        self.roster = self._upgrade_roster(roster, outliers)
         self.pitch_size = pitch_size
 
     # Synchronize the player movement data with the official roster
-    def _upgrade_roster(self, roster):
+    def _upgrade_roster(self, roster, outliers=None):
+        if outliers is not None:
+            self.ugp_df = self.ugp_df[~self.ugp_df[LABEL_PLAYER_ID].isin(outliers)]
+            for period in self.player_periods.index:
+                player_ids = self.player_periods.at[period, LABEL_PLAYER_IDS]
+                self.player_periods.at[period, LABEL_PLAYER_IDS] = list(set(player_ids) - set(outliers))
+
         player_ids = []
         for player_id in roster.index:
             if not self.ugp_df[self.ugp_df[LABEL_PLAYER_ID] == player_id].empty:

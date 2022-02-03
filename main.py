@@ -36,7 +36,7 @@ if __name__ == '__main__':
 
     # Perform SoccerCPD per match
     outliers = pd.read_csv('data/outliers.csv', header=0) if os.path.exists('data/outliers.csv') else None
-    for i in activity_records.index[:5]:
+    for i in activity_records.index[:10]:
         tic = datetime.now()
         activity_id = activity_records.at[i, LABEL_ACTIVITY_ID]
         date = activity_records.at[i, LABEL_DATE]
@@ -46,7 +46,10 @@ if __name__ == '__main__':
         print(f'[{i}] activity_id: {activity_id}, date: {date}, team_name: {team_name}')
 
         activity_args = rm.load_activity_data(activity_id)
-        match = Match(*activity_args)
+        activity_outliers = None
+        if outliers is not None:
+            activity_outliers = outliers[outliers[LABEL_ACTIVITY_ID] == activity_id][LABEL_PLAYER_ID].tolist()
+        match = Match(*activity_args, outliers=activity_outliers)
 
         if match.player_periods[LABEL_PLAYER_IDS].iloc[1:].apply(lambda x: len(x)).max() >= 10:
             # Filter in-play data from the measured data using the start, end, and substitution records

@@ -135,7 +135,6 @@ class SoccerCPD:
             raise ValueError('Invalid formcpd_type')
 
         chg_dt = input_seq.index[chg_idx]
-        print(chg_idx, chg_dt)
 
         # Fine-tune chg_dt to the closest substitution time (if exists)
         if len(sub_dts) > 0:
