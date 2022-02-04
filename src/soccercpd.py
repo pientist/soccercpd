@@ -80,8 +80,11 @@ class SoccerCPD:
             dists = pd.DataFrame(pairwise_distances(input_seq.drop_duplicates(), metric=metric))
 
             # Save the input sequence and the pairwise distances so that we can use them in the R script below
-            input_seq.to_csv(f'{DIR_TEMP_DATA}/temp_seq.csv', index=False)
-            dists.to_csv(f'{DIR_TEMP_DATA}/temp_dists.csv', index=False)
+            if not os.path.exists(DIR_TEMP_DATA):
+                os.mkdir(DIR_TEMP_DATA)
+            activity_id = self.match.record[LABEL_ACTIVITY_ID]
+            input_seq.to_csv(f'{DIR_TEMP_DATA}/{activity_id}_temp_seq.csv', index=False)
+            dists.to_csv(f'{DIR_TEMP_DATA}/{activity_id}_temp_dists.csv', index=False)
 
             try:
                 print(f"Applying g-segmentation to the sequence between {start_time} and {end_time}...")
@@ -92,18 +95,19 @@ class SoccerCPD:
                     gseg_type = self.rolecpd_type.split('_')[1][0]
 
                 # Run the R function 'gseg1_discrete' to find a change-point
+                # rpackages.importr('gSeg', lib_loc=rpackages.importr('base')._libPaths()[0])
                 robjects.r(f'''
                     dir = '{DIR_TEMP_DATA}'
-                    seq_path = paste(dir, 'temp_seq.csv', sep='/')
+                    seq_path = paste(dir, '{activity_id}_temp_seq.csv', sep='/')
                     seq = read.csv(seq_path)
-                    dists_path = paste(dir, 'temp_dists.csv', sep='/')
+                    dists_path = paste(dir, '{activity_id}_temp_dists.csv', sep='/')
                     dists = read.csv(dists_path)
 
                     n = dim(seq)[1]
                     edge_mat = nnl(dists, 1)
                     seq_str = do.call(paste, seq)
                     ids = match(seq_str, unique(seq_str))
-                    output = gseg1_discrete(n, edge_mat, ids, statistics="generalized", n0=0.1*n, n1=0.9*n)
+                    output = gseg1_discrete(n, edge_mat, ids, statistics='generalized', n0=0.1*n, n1=0.9*n)
                     
                     chg_idx = output$scanZ$generalized$tauhat_{gseg_type}
                     pval = output$pval.appr$generalized_{gseg_type}

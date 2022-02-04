@@ -1,7 +1,7 @@
 # File paths and variable names
 DIR_DATA = './data'
 DIR_UGP_DATA = f'{DIR_DATA}/ugp'
-DIR_TEMP_DATA = f'{DIR_DATA}/temp'
+DIR_TEMP_DATA = f'{DIR_DATA}/rtemp'
 
 VARNAME_ACTIVITY_RECORDS = 'activity_records'
 VARNAME_PLAYER_RECORDS = 'player_records'
