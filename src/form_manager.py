@@ -79,14 +79,14 @@ class FormManager:
             labels = np.arange(11)
             fontsize = 20
         else:
-            fontsize = 12
+            fontsize = 14
 
         for i in np.arange(10):
             plt.annotate(labels[i+1], xy=coords[i], ha='center', va='center',
-                        c='w', fontsize=fontsize, fontweight='bold', zorder=2)
+                         c='w', fontsize=fontsize, fontweight='bold', zorder=2)
             for j in np.arange(10):
                 plt.plot(coords[[i, j], 0], coords[[i, j], 1],
-                        linewidth=edge_mat[i, j] ** 2 * 10, c='k', zorder=0)
+                         linewidth=edge_mat[i, j] ** 2 * 10, c='k', zorder=0)
 
         xlim = 3000
         ylim = 2400
