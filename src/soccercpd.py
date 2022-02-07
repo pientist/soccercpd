@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import pandas as pd
-from datetime import timedelta
+from datetime import datetime, timedelta
 from scipy.spatial import Delaunay
 from sklearn.metrics import pairwise_distances
 from scipy.spatial import distance_matrix
@@ -23,8 +23,11 @@ pd.set_option('display.max_columns', 20)
 
 # Formation and role change-point detection (main algorithm)
 class SoccerCPD:
-    def __init__(self, match, formcpd_type='gseg_avg', rolecpd_type='gseg_avg',
-                 max_sr=MAX_SWITCH_RATE, max_pval=MAX_PVAL, min_pdur=MIN_PERIOD_DUR, min_fdist=MIN_FORM_DIST):
+    def __init__(
+        self, match, apply_cpd=True, formcpd_type='gseg_avg', rolecpd_type='gseg_avg',
+        max_sr=MAX_SWITCH_RATE, max_pval=MAX_PVAL, min_pdur=MIN_PERIOD_DUR, min_fdist=MIN_FORM_DIST
+    ):
+        self.apply_cpd = apply_cpd
         self.formcpd_type = formcpd_type
         self.rolecpd_type = rolecpd_type
         # Available FormCPD types: 'gseg_avg', 'gseg_union', 'kernel_linear', 'kernel_rbf', 'kernel_cosine', 'rank'
@@ -227,11 +230,26 @@ class SoccerCPD:
         moment_fgp_df[LABEL_SWITCH_RATE] = hamming / len(moment_fgp_df)
         return moment_fgp_df
 
-    def run(self):
+    def run(self, precompute_fgp=True):
+        activity_id = self.match.record[LABEL_ACTIVITY_ID]
+        fgp_path = f'data/{self.formcpd_type}/fgp/{activity_id}.csv'
+
+        # If self.precompute_fgp == True, load and initialize the pre-computed FGP data
+        if precompute_fgp and os.path.exists(fgp_path):
+            fgp_df = pd.read_csv(fgp_path, header=0, encoding='utf-8-sig')
+            fgp_df[LABEL_DATETIME] = fgp_df[LABEL_DATETIME].apply(lambda x: datetime.strptime(x, '%Y-%m-%d %H:%M:%S'))
+
+            base_roles = fgp_df.groupby([LABEL_PLAYER_PERIOD, LABEL_PLAYER_ID])[LABEL_ROLE].apply(RoleRep._most_common)
+            base_roles = base_roles.reset_index().rename(columns={LABEL_ROLE: LABEL_BASE_ROLE})
+
+            fgp_df = pd.merge(fgp_df[HEADER_ROSTER + [LABEL_DATETIME] + HEADER_FGP[1:-2]], base_roles)
+            self.fgp_df = fgp_df.groupby(LABEL_DATETIME).apply(SoccerCPD._recompute_switch_rate)
+
         # Initialize formation and role period labels by the session labels
         self.ugp_df[LABEL_FORM_PERIOD] = self.ugp_df[LABEL_SESSION]
         self.ugp_df[LABEL_ROLE_PERIOD] = self.ugp_df[LABEL_SESSION]
 
+        fgp_list = []
         for session in self.ugp_df[LABEL_SESSION].unique():
             print(f"\n{'-' * 33} Session {session} {'-' * 34}")
             player_periods = self.player_periods[self.player_periods[LABEL_SESSION] == session]
@@ -244,13 +262,18 @@ class SoccerCPD:
             else:
                 print(player_periods[HEADER_PLAYER_PERIODS[2:7]])
 
-            print("\n* Step 1: Frame-by-frame role assignment using RoleRep")
-            rolerep = RoleRep(ugp_df)
-            rolerep.run(freq='1S')
+            if precompute_fgp and not self.fgp_df.empty:
+                print("\n* Step 1: Load the pre-computed role assignment result")
+                fgp_df = self.fgp_df[self.fgp_df[LABEL_SESSION] == session]
+                print(f"Session FGP data loaded and filtered from '{fgp_path}'")
+            else:
+                print("\n* Step 1: Frame-by-frame role assignment using RoleRep")
+                rolerep = RoleRep(ugp_df)
+                fgp_df = rolerep.run(freq='1S')
 
             print("\n* Step 2: FormCPD based on role-adjacency matrices")
             # Exclude situations such as set-pieces that are irrelevant to the team formation
-            valid_fgp_df = rolerep.fgp_df[rolerep.fgp_df[LABEL_SWITCH_RATE] <= self.max_sr]
+            valid_fgp_df = fgp_df[fgp_df[LABEL_SWITCH_RATE] <= self.max_sr]
             role_x = valid_fgp_df.pivot_table(
                 values=LABEL_X_NORM, index=LABEL_DATETIME, columns=LABEL_ROLE, aggfunc='first'
             )
@@ -262,7 +285,7 @@ class SoccerCPD:
                 print('Not enough players to estimate a formation.')
                 continue
             else:
-                self.fgp_df = self.fgp_df.append(rolerep.fgp_df)
+                fgp_list.append(fgp_df)
 
             # Generate the sequence of role-adjacency matrices
             edge_mats = []
@@ -353,7 +376,8 @@ class SoccerCPD:
                         LABEL_DURATION: (role_end_dt - role_start_dt).total_seconds(),
                         LABEL_BASE_PERM: base_perm_dict
                     }, ignore_index=True)
-
+        
+        self.fgp_df = pd.concat(fgp_list, ignore_index=True)
         if self.fgp_df.empty:
             return
 
@@ -478,7 +502,7 @@ class SoccerCPD:
         print(f"'{report_path}' saving done.")
 
     def save_stats(self, fgp=True, form=True):
-        activity_id_ = self.match.record[LABEL_ACTIVITY_ID]
+        activity_id = self.match.record[LABEL_ACTIVITY_ID]
 
         if not os.path.exists(f'{DIR_DATA}/{self.formcpd_type}'):
             os.mkdir(f'{DIR_DATA}/{self.formcpd_type}')
@@ -491,16 +515,16 @@ class SoccerCPD:
             fgp_dir = f'{DIR_DATA}/{self.formcpd_type}/fgp'
             if not os.path.exists(fgp_dir):
                 os.mkdir(fgp_dir)
-            fgp_path = f'{fgp_dir}/{activity_id_}.csv'
+            fgp_path = f'{fgp_dir}/{activity_id}.csv'
             fgp_df.to_csv(fgp_path, index=False, encoding='utf-8-sig')
             print(f"'{fgp_path}' saving done.")
 
         # Save form_periods
         if form:
-            self.form_periods[LABEL_ACTIVITY_ID] = activity_id_
+            self.form_periods[LABEL_ACTIVITY_ID] = activity_id
             form_dir = f'{DIR_DATA}/{self.formcpd_type}/form'
             if not os.path.exists(form_dir):
                 os.mkdir(form_dir)
-            form_path = f'{form_dir}/{activity_id_}.pkl'
+            form_path = f'{form_dir}/{activity_id}.pkl'
             self.form_periods[[LABEL_ACTIVITY_ID] + HEADER_FORM_PERIODS].to_pickle(form_path)
             print(f"'{form_path}' saving done.")

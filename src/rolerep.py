@@ -145,6 +145,8 @@ class RoleRep:
         session = self.ugp_df[LABEL_SESSION].iloc[0]
         self.role_distns[LABEL_SESSION] = session
 
+        return self.fgp_df
+
 
 # if __name__ == '__main__':
 #     rm = RecordManager()

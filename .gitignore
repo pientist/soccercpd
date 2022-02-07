@@ -10,6 +10,7 @@ data/kernel_linear/
 data/kernel_rbf/
 data/kernel_cosine/
 data/rank/
+data/noncpd/
 data/rtemp/
 
 # Byte-compiled / optimized / DLL files

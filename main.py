@@ -110,7 +110,7 @@ if __name__ == '__main__':
 
     # Perform SoccerCPD per match using for loop
     for i in activity_records.index:
-        analyze_activity(i, outliers, formcpd_type='kernel_cosine', verbose=True)
+        analyze_activity(i, outliers, formcpd_type='gseg_union', verbose=True)
 
         # Set 'stats_saved' value for the match to 1 to avoid redundant executions
         rm.activity_records.at[i, LABEL_STATS_SAVED] = 1
