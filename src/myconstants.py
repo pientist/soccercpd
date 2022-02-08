@@ -80,6 +80,7 @@ HEADER_FGP = [
 
 LABEL_COORDS = 'coords'
 LABEL_EDGE_MAT = 'edge_mat'
+LABEL_PERM = 'perm'
 LABEL_BASE_PERM = 'base_perm'
 LABEL_DISTN = 'distn'
 LABEL_CLUSTER = 'cluster'
