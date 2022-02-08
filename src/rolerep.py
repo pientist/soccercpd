@@ -22,13 +22,13 @@ class RoleRep:
         self.role_distns = None
 
     @staticmethod
-    def _normalize_locs(moment_fgp_df):
+    def normalize_locs(moment_fgp_df):
         locs = moment_fgp_df[[LABEL_X, LABEL_Y]]
         moment_fgp_df[[LABEL_X_NORM, LABEL_Y_NORM]] = locs - locs.mean()
         return moment_fgp_df
 
     @staticmethod
-    def _generate_fgp(ugp_df, freq):
+    def generate_fgp(ugp_df, freq):
         ugp_df = ugp_df[ugp_df[LABEL_X].notna()]
         fgp_df = pd.DataFrame(columns=HEADER_FGP)
         role = 1
@@ -50,10 +50,10 @@ class RoleRep:
             role += 1
 
         fgp_df = fgp_df.reset_index().rename(columns={LABEL_INDEX: LABEL_DATETIME})
-        return fgp_df.groupby(LABEL_DATETIME).apply(RoleRep._normalize_locs)
+        return fgp_df.groupby(LABEL_DATETIME).apply(RoleRep.normalize_locs)
 
     @staticmethod
-    def _estimate_mvn(df, col_x=LABEL_X_NORM, col_y=LABEL_Y_NORM, filter=True):
+    def estimate_mvn(df, col_x=LABEL_X_NORM, col_y=LABEL_Y_NORM, filter=True):
         if filter:
             coords = df[df[LABEL_SWITCH_RATE] <= MAX_SWITCH_RATE][[col_x, col_y]]
         else:
@@ -67,7 +67,7 @@ class RoleRep:
     @staticmethod
     def update_params(fgp_df, by_phase=False):
         cols = [LABEL_PLAYER_PERIOD, LABEL_ROLE] if by_phase else [LABEL_ROLE]
-        role_distns = fgp_df.groupby(cols).apply(RoleRep._estimate_mvn).reset_index()
+        role_distns = fgp_df.groupby(cols).apply(RoleRep.estimate_mvn).reset_index()
         return role_distns.dropna().rename(columns={0: LABEL_DISTN})
 
     @staticmethod
@@ -96,7 +96,7 @@ class RoleRep:
 
         return fgp_df, role_distns.sort_values(by=[label_group, LABEL_ROLE]).reset_index(drop=True)
 
-    def _hungarian(self, moment_fgp_df, role_distns):
+    def hungarian(self, moment_fgp_df, role_distns):
         cost_mat = moment_fgp_df[moment_fgp_df.columns[(len(HEADER_FGP) + 1):]].values
         row_idx, col_idx = linear_sum_assignment(cost_mat)
         base_roles = moment_fgp_df[LABEL_BASE_ROLE].iloc[row_idx].values
@@ -106,7 +106,7 @@ class RoleRep:
         return cost_mat[row_idx, col_idx].mean()
 
     @staticmethod
-    def _most_common(player_roles):
+    def most_common(player_roles):
         try:
             counter = Counter(player_roles[player_roles.notna()])
             return counter.most_common(1)[0][0]
@@ -114,7 +114,7 @@ class RoleRep:
             return np.nan
 
     def run(self, freq='1S', verbose=True):
-        temp_fgp_df = self.ugp_df.groupby(LABEL_PLAYER_PERIOD).apply(RoleRep._generate_fgp, freq=freq)
+        temp_fgp_df = self.ugp_df.groupby(LABEL_PLAYER_PERIOD).apply(RoleRep.generate_fgp, freq=freq)
         temp_fgp_df = temp_fgp_df.reset_index(drop=True).dropna()
         temp_role_distns = RoleRep.update_params(temp_fgp_df, by_phase=True)
         temp_fgp_df = pd.merge(temp_fgp_df, temp_role_distns[[LABEL_PLAYER_PERIOD, LABEL_ROLE]])
@@ -131,7 +131,7 @@ class RoleRep:
                 lambda n: pd.Series(-np.log(n.pdf(self.fgp_df[[LABEL_X_NORM, LABEL_Y_NORM]])))
             ).transpose().values, index=self.fgp_df.index)
             fgp_cost_df = pd.concat([self.fgp_df, cost_df], axis=1)
-            costs = fgp_cost_df.groupby(LABEL_DATETIME).apply(self._hungarian, self.role_distns).mean()
+            costs = fgp_cost_df.groupby(LABEL_DATETIME).apply(self.hungarian, self.role_distns).mean()
             cost_new = costs.mean()
             if verbose:
                 print('- Cost after iteration {0}: {1:.3f}'.format(i_iter + 1, cost_new))

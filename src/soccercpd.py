@@ -398,6 +398,8 @@ class SoccerCPD:
             return
 
         if not self.apply_cpd:
+            print("\n* Step 3: Find the most frequent permutation per 5-minute segment")
+
             perms_str = pd.concat(perm_list)
             bins = self.player_periods[LABEL_START_DT].tolist()[1:] + [self.player_periods[LABEL_END_DT].iloc[0]]
             perms_str[LABEL_PLAYER_PERIOD] = pd.cut(perms_str.index, bins, labels=self.player_periods.index[1:])
@@ -422,7 +424,7 @@ class SoccerCPD:
             role_periods.rename(columns={LABEL_DATETIME: LABEL_START_DT}, inplace=True)
 
             perms_list = role_periods[LABEL_PERM].apply(lambda x: np.fromstring(x[1:-1], dtype=int, sep=' '))
-            role_periods[LABEL_BASE_PERM] = perms_list.apply(lambda x: dict(zip(perms.columns, x)))
+            role_periods[LABEL_BASE_PERM] = perms_list.apply(lambda perm: dict(zip(np.arange(10) + 1, perm)))
             role_periods[LABEL_ROLE_PERIOD] = role_periods.index + 1
             role_periods[LABEL_DURATION] = (
                 role_periods[LABEL_END_DT] - role_periods[LABEL_START_DT]
