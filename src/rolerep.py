@@ -105,14 +105,6 @@ class RoleRep:
         self.fgp_df.loc[moment_fgp_df.index, LABEL_SWITCH_RATE] = (base_roles != temp_roles).sum() / len(row_idx)
         return cost_mat[row_idx, col_idx].mean()
 
-    @staticmethod
-    def most_common(player_roles):
-        try:
-            counter = Counter(player_roles[player_roles.notna()])
-            return counter.most_common(1)[0][0]
-        except IndexError:
-            return np.nan
-
     def run(self, freq='1S', verbose=True):
         temp_fgp_df = self.ugp_df.groupby(LABEL_PLAYER_PERIOD).apply(RoleRep.generate_fgp, freq=freq)
         temp_fgp_df = temp_fgp_df.reset_index(drop=True).dropna()
@@ -135,7 +127,7 @@ class RoleRep:
             cost_new = costs.mean()
             if verbose:
                 print('- Cost after iteration {0}: {1:.3f}'.format(i_iter + 1, cost_new))
-            self.role_distns = self.update_params(self.fgp_df)
+            self.role_distns = RoleRep.update_params(self.fgp_df)
             if cost_new + tol > cost_prev:
                 if verbose:
                     print('Iteration finished since there are no significant changes.')
