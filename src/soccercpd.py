@@ -24,7 +24,7 @@ pd.set_option('display.max_columns', 20)
 # Formation and role change-point detection (main algorithm)
 class SoccerCPD:
     def __init__(
-        self, match, apply_cpd=True, formcpd_type='gseg_avg', rolecpd_type='gseg_avg', fgp_freq=1,
+        self, match, apply_cpd=True, formcpd_type='gseg_avg', rolecpd_type='gseg_avg',
         max_sr=MAX_SWITCH_RATE, max_pval=MAX_PVAL, min_pdur=MIN_PERIOD_DUR, min_fdist=MIN_FORM_DIST
     ):
         self.apply_cpd = apply_cpd
@@ -33,19 +33,20 @@ class SoccerCPD:
         # Available FormCPD types: 'gseg_avg', 'gseg_union', 'kernel_linear', 'kernel_rbf', 'kernel_cosine', 'rank'
         # Available RoleCPD types: 'gseg_avg', 'gseg_union'
 
-        self.fgp_freq = fgp_freq
         self.max_sr = max_sr
         self.max_pval = max_pval
         self.min_pdur = min_pdur
         self.min_fdist = min_fdist
 
         self.match = match
-        self.ugp_df = self.match.ugp_df
+        self.activity_id = self.match.record[LABEL_ACTIVITY_ID]
         self.player_periods = self.match.player_periods
+        self.ugp_df = self.match.ugp_df
 
         self.fgp_df = pd.DataFrame(columns=[LABEL_DATETIME] + HEADER_FGP)
         self.form_periods = pd.DataFrame(columns=HEADER_FORM_PERIODS)
         self.role_periods = pd.DataFrame(columns=HEADER_ROLE_PERIODS)
+        self.role_records = None
 
         self.target_dir = f'{DIR_DATA}/{formcpd_type}' if apply_cpd else f'{DIR_DATA}/noncpd'
 
@@ -88,9 +89,8 @@ class SoccerCPD:
             # Save the input sequence and the pairwise distances so that we can use them in the R script below
             if not os.path.exists(DIR_TEMP_DATA):
                 os.mkdir(DIR_TEMP_DATA)
-            activity_id = self.match.record[LABEL_ACTIVITY_ID]
-            input_seq.to_csv(f'{DIR_TEMP_DATA}/{activity_id}_temp_seq.csv', index=False)
-            dists.to_csv(f'{DIR_TEMP_DATA}/{activity_id}_temp_dists.csv', index=False)
+            input_seq.to_csv(f'{DIR_TEMP_DATA}/{self.activity_id}_temp_seq.csv', index=False)
+            dists.to_csv(f'{DIR_TEMP_DATA}/{self.activity_id}_temp_dists.csv', index=False)
 
             try:
                 print(f"Applying g-segmentation to the sequence between {start_time} and {end_time}...")
@@ -104,9 +104,9 @@ class SoccerCPD:
                 # rpackages.importr('gSeg', lib_loc=rpackages.importr('base')._libPaths()[0])
                 robjects.r(f'''
                     dir = '{DIR_TEMP_DATA}'
-                    seq_path = paste(dir, '{activity_id}_temp_seq.csv', sep='/')
+                    seq_path = paste(dir, '{self.activity_id}_temp_seq.csv', sep='/')
                     seq = read.csv(seq_path)
-                    dists_path = paste(dir, '{activity_id}_temp_dists.csv', sep='/')
+                    dists_path = paste(dir, '{self.activity_id}_temp_dists.csv', sep='/')
                     dists = read.csv(dists_path)
 
                     n = dim(seq)[1]
@@ -125,7 +125,7 @@ class SoccerCPD:
             # Check whether the detected change-point is significant, using the following three conditions
             # Condition (1): The p-value of the scan statistic must be less than 0.1
             if robjects.r['pval'][0] >= self.max_pval:
-                print('Change-point insignificant: The p-value is not small enough\n')
+                print('Change-point insignificant: The p-value is not small enough.\n')
                 return []
             else:
                 chg_idx = robjects.r['chg_idx'][0]
@@ -142,7 +142,7 @@ class SoccerCPD:
             chg_idx = algo.predict(n_bkps=1)[0]
 
         else:
-            raise ValueError('Invalid formcpd_type')
+            raise ValueError('Invalid formcpd_type.')
 
         chg_dt = input_seq.index[chg_idx]
 
@@ -156,7 +156,7 @@ class SoccerCPD:
         seq1 = input_seq[:chg_dt]
         seq2 = input_seq[chg_dt:]
         if (len(seq1) < self.min_pdur) or (len(seq2) < self.min_pdur):
-            print('Change-point insignificant: One of the periods has not enough duration\n')
+            print('Change-point insignificant: One of the periods has not enough duration.\n')
             return []
 
         if mode == 'form':
@@ -165,11 +165,11 @@ class SoccerCPD:
             form1_edge_mat = seq1.mean(axis=0).values
             form2_edge_mat = seq2.mean(axis=0).values
             if self.manhattan(form1_edge_mat, form2_edge_mat) < self.min_fdist:
-                print('Change-point insignificant: The formation is not changed\n')
+                print('Change-point insignificant: The formation is not changed.\n')
                 return []
             else:
                 # If significant, recursively detect another change-points before and after chg_dt
-                print(f'A significant fine-tuned change-point at {chg_dt.time()}\n')
+                print(f'A significant fine-tuned change-point at {chg_dt.time()}.\n')
                 prev_chg_dts = self.detect_change_times(seq1, sub_dts)
                 next_chg_dts = self.detect_change_times(seq2, sub_dts)
                 return prev_chg_dts + [chg_dt] + next_chg_dts
@@ -181,11 +181,11 @@ class SoccerCPD:
             counter1 = Counter(seq1_str)
             counter2 = Counter(seq2_str)
             if counter1.most_common(1)[0][0] == counter2.most_common(1)[0][0]:
-                print('Change-point insignificant: The most frequent permutation is not changed\n')
+                print('Change-point insignificant: The most frequent permutation is not changed.\n')
                 return []
             else:
                 # If significant, recursively detect another change-points before and after chg_dt
-                print(f'A significant fine-tuned change-point at {chg_dt.time()}')
+                print(f'A significant fine-tuned change-point at {chg_dt.time()}.')
                 print(f'- Frequent permutations before {chg_dt.time()}:')
                 pprint(counter1.most_common(5))
                 print(f'- Frequent permutations after {chg_dt.time()}:')
@@ -252,9 +252,20 @@ class SoccerCPD:
             self.fgp_df.loc[fgp_df.index, LABEL_BASE_ROLE] = fgp_df[LABEL_PLAYER_ID].apply(lambda x: base_perm_dict[x])
         self.fgp_df = self.fgp_df.groupby(LABEL_DATETIME).apply(SoccerCPD.recompute_switch_rate)
 
-    def run(self, use_precomputed_fgp=True):
-        activity_id = self.match.record[LABEL_ACTIVITY_ID]
-        fgp_path = f'data/{self.formcpd_type}/fgp/{activity_id}.csv'
+    def generate_role_records(self):
+        grouped = self.fgp_df.groupby([LABEL_PLAYER_ID, LABEL_ROLE_PERIOD], as_index=False)
+        role_records = grouped[[LABEL_PLAYER_PERIOD, LABEL_BASE_ROLE]].first()
+        role_records = pd.merge(role_records, self.role_periods[HEADER_ROLE_PERIODS[:-1]])
+
+        role_records = pd.merge(role_records, self.form_periods[[LABEL_FORM_PERIOD, LABEL_COORDS]])
+        role_records[LABEL_X] = role_records.apply(lambda x: x[LABEL_COORDS][x[LABEL_BASE_ROLE]-1, 0], axis=1)
+        role_records[LABEL_Y] = role_records.apply(lambda x: x[LABEL_COORDS][x[LABEL_BASE_ROLE]-1, 1], axis=1)
+
+        role_records = pd.merge(role_records, self.match.roster[HEADER_ROSTER])
+        return role_records[HEADER_ROLE_RECORDS].astype({LABEL_PLAYER_PERIOD: int})
+
+    def run(self, use_precomputed_fgp=True, freq='1S'):
+        fgp_path = f'data/{self.formcpd_type}/fgp/{self.activity_id}.csv'
 
         # If self.use_precomputed_fgp == True, load and initialize the precomputed FGP data
         if use_precomputed_fgp and os.path.exists(fgp_path):
@@ -288,11 +299,11 @@ class SoccerCPD:
             if use_precomputed_fgp and not self.fgp_df.empty:
                 print("\n* Step 1: Load the pre-computed role assignment result")
                 fgp_df = self.fgp_df[self.fgp_df[LABEL_SESSION] == session]
-                print(f"Session FGP data loaded and filtered from '{fgp_path}'")
+                print(f"Session FGP data loaded and filtered from '{fgp_path}'.")
             else:
                 print("\n* Step 1: Frame-by-frame role assignment using RoleRep")
                 rolerep = RoleRep(ugp_df)
-                fgp_df = rolerep.run(freq=f'{self.fgp_freq}S')
+                fgp_df = rolerep.run(freq=freq)
             
             # Exclude situations such as set-pieces that are irrelevant to the team formation
             valid_fgp_df = fgp_df[fgp_df[LABEL_SWITCH_RATE] <= self.max_sr]
@@ -357,6 +368,7 @@ class SoccerCPD:
 
                 # Recording the details of the formation period
                 self.form_periods = self.form_periods.append({
+                    LABEL_ACTIVITY_ID: self.activity_id,
                     LABEL_SESSION: session,
                     LABEL_FORM_PERIOD: form_period,
                     LABEL_START_DT: form_start_dt,
@@ -368,7 +380,7 @@ class SoccerCPD:
 
                 if self.apply_cpd:
                     # Recursive change-point detection for the permutation sequence
-                    print(f"\nRoleCPD for the formation period {form_period}")
+                    print(f"\nRoleCPD for the formation period {form_period}:")
                     input_perms = perms[form_start_dt:form_end_dt]
                     input_sub_dts = np.array([dt for dt in sub_dts if (dt >= form_start_dt) and (dt < form_end_dt)])
                     role_chg_dts = self.detect_change_times(input_perms, input_sub_dts, mode='role')
@@ -395,6 +407,7 @@ class SoccerCPD:
 
                         # Recording the details of the role period
                         self.role_periods = self.role_periods.append({
+                            LABEL_ACTIVITY_ID: self.activity_id,
                             LABEL_SESSION: session,
                             LABEL_FORM_PERIOD: form_period,
                             LABEL_ROLE_PERIOD: role_period,
@@ -436,6 +449,8 @@ class SoccerCPD:
 
             perms_list = role_periods[LABEL_PERM].apply(lambda x: np.fromstring(x[1:-1], dtype=int, sep=' '))
             role_periods[LABEL_BASE_PERM] = perms_list.apply(lambda perm: dict(zip(np.arange(10) + 1, perm)))
+
+            role_periods[LABEL_ACTIVITY_ID] = self.activity_id
             role_periods[LABEL_ROLE_PERIOD] = role_periods.index + 1
             role_periods[LABEL_DURATION] = (
                 role_periods[LABEL_END_DT] - role_periods[LABEL_START_DT]
@@ -460,18 +475,22 @@ class SoccerCPD:
         self.fgp_df = self.fgp_df.apply(self.reassign_base_role, axis=1)
         self.fgp_df = self.fgp_df.groupby(LABEL_DATETIME).apply(SoccerCPD.recompute_switch_rate)
         self.fgp_df, self.form_periods = SoccerCPD.align_formations(self.fgp_df, self.form_periods)
+        self.fgp_df = pd.merge(
+            self.fgp_df, self.match.roster[HEADER_ROSTER]
+        ).sort_values(by=[LABEL_PLAYER_ID, LABEL_DATETIME], ignore_index=True)
 
         self.form_periods = self.form_periods.reset_index()[HEADER_FORM_PERIODS]
         self.role_periods = self.role_periods.reset_index()[HEADER_ROLE_PERIODS]
-
+        self.role_records = self.generate_role_records()
         print()
         print('-' * 78)
         print('Formation Periods:')
-        print(self.form_periods[HEADER_FORM_PERIODS[:-2]])
+        print(self.form_periods[HEADER_FORM_PERIODS[1:-2]])
         print()
         print('Role Periods:')
-        print(self.role_periods[HEADER_ROLE_PERIODS[:-1]])
+        print(self.role_periods[HEADER_ROLE_PERIODS[1:-1]])
         print()
+
 
     def visualize(self):
         import matplotlib.pyplot as plt
@@ -562,30 +581,33 @@ class SoccerCPD:
         plt.close(fig)
         print(f"'{report_path}' saving done.")
 
-    def save_stats(self, fgp=True, form=True):
-        activity_id = self.match.record[LABEL_ACTIVITY_ID]
-
+    def save_stats(self, fgp=True, form=True, role=True):
         if not os.path.exists(f'{self.target_dir}'):
             os.mkdir(f'{self.target_dir}')
 
         # Save fgp_df
         if fgp:
-            fgp_df = pd.merge(
-                self.match.roster[HEADER_ROSTER], self.fgp_df
-            ).sort_values(by=[LABEL_SQUAD_NUM, LABEL_DATETIME])
             fgp_dir = f'{self.target_dir}/fgp'
             if not os.path.exists(fgp_dir):
                 os.mkdir(fgp_dir)
-            fgp_path = f'{fgp_dir}/{activity_id}.csv'
-            fgp_df.to_csv(fgp_path, index=False, encoding='utf-8-sig')
+            fgp_path = f'{fgp_dir}/{self.activity_id}.csv'
+            self.fgp_df.to_csv(fgp_path, index=False, encoding='utf-8-sig')
             print(f"'{fgp_path}' saving done.")
 
         # Save form_periods
         if form:
-            self.form_periods[LABEL_ACTIVITY_ID] = activity_id
             form_dir = f'{self.target_dir}/form'
             if not os.path.exists(form_dir):
                 os.mkdir(form_dir)
-            form_path = f'{form_dir}/{activity_id}.pkl'
-            self.form_periods[[LABEL_ACTIVITY_ID] + HEADER_FORM_PERIODS].to_pickle(form_path)
+            form_path = f'{form_dir}/{self.activity_id}.pkl'
+            self.form_periods.to_pickle(form_path)
             print(f"'{form_path}' saving done.")
+
+        # save role_records
+        if role:
+            role_dir = f'{self.target_dir}/role'
+            if not os.path.exists(role_dir):
+                os.mkdir(role_dir)
+            role_path = f'{role_dir}/{self.activity_id}.csv'
+            self.role_records.to_csv(role_path, index=False, encoding='utf-8-sig')
+            print(f"'{role_path}' saving done.")
