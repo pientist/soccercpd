@@ -246,6 +246,8 @@ class SoccerCPD:
         for i in self.player_periods.index[1:]:
             fgp_df = self.fgp_df[self.fgp_df[LABEL_PLAYER_PERIOD] == i]
             perms = fgp_df.pivot_table(LABEL_ROLE, LABEL_DATETIME, LABEL_PLAYER_ID, 'first')
+            role_set = set(perms.dropna().iloc[0])
+            perms = perms.apply(SoccerCPD.complete_perm, axis=1, args=(role_set,)).astype(int)
             perms_str = perms.apply(lambda perm: np.array2string(perm.values), axis=1)
             base_perm_list = np.fromstring(SoccerCPD.most_common(perms_str)[1:-1], dtype='float32', sep=' ')
             base_perm_dict = dict(zip(perms.columns, base_perm_list))
@@ -274,6 +276,7 @@ class SoccerCPD:
                 lambda x: datetime.strptime(x, '%Y-%m-%d %H:%M:%S')
             )
             self.reset_precomputed_fgp()
+            print(self.fgp_df[self.fgp_df[LABEL_BASE_ROLE].isna()])
 
         # Initialize formation and role period labels by the session labels
         self.ugp_df[LABEL_FORM_PERIOD] = self.ugp_df[LABEL_SESSION]
@@ -472,6 +475,7 @@ class SoccerCPD:
         )
 
         # Reflect the instructed roles and recompute switch rates in fgp_df
+        print(self.fgp_df)
         self.fgp_df = self.fgp_df.apply(self.reassign_base_role, axis=1)
         self.fgp_df = self.fgp_df.groupby(LABEL_DATETIME).apply(SoccerCPD.recompute_switch_rate)
         self.fgp_df, self.form_periods = SoccerCPD.align_formations(self.fgp_df, self.form_periods)
@@ -490,7 +494,6 @@ class SoccerCPD:
         print('Role Periods:')
         print(self.role_periods[HEADER_ROLE_PERIODS[1:-1]])
         print()
-
 
     def visualize(self):
         import matplotlib.pyplot as plt

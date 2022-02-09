@@ -29,7 +29,7 @@ class HiddenPrints:
         sys.stdout = self._original_stdout
 
 
-def analyze_activity_inner(i, outliers, formcpd_type):
+def analyze_activity_inner(i, outliers, apply_cpd, formcpd_type):
     tic = datetime.now()
     activity_id = activity_records.at[i, LABEL_ACTIVITY_ID]
     date = activity_records.at[i, LABEL_DATE]
@@ -52,7 +52,7 @@ def analyze_activity_inner(i, outliers, formcpd_type):
         match.rotate_pitch()
 
         # Apply SoccerCPD on the preprocessed match data
-        cpd = SoccerCPD(match, formcpd_type=formcpd_type)
+        cpd = SoccerCPD(match, apply_cpd=apply_cpd, formcpd_type=formcpd_type)
         cpd.run()
         if not cpd.fgp_df.empty:
             cpd.visualize()
@@ -70,12 +70,12 @@ def analyze_activity_inner(i, outliers, formcpd_type):
         return i, 0
 
 
-def analyze_activity(i, outliers, formcpd_type='gseg_avg', verbose=True):
+def analyze_activity(i, outliers, apply_cpd=True, formcpd_type='gseg_avg', verbose=True):
     if verbose:
-        return analyze_activity_inner(i, outliers, formcpd_type)
+        return analyze_activity_inner(i, outliers, apply_cpd, formcpd_type)
     else:
         with HiddenPrints():
-            return analyze_activity_inner(i, outliers, formcpd_type)
+            return analyze_activity_inner(i, outliers, apply_cpd, formcpd_type)
 
 
 if __name__ == '__main__':
@@ -110,7 +110,7 @@ if __name__ == '__main__':
 
     # Perform SoccerCPD per match using for loop
     for i in activity_records.index:
-        analyze_activity(i, outliers, formcpd_type='gseg_union', verbose=True)
+        analyze_activity(i, outliers, apply_cpd=False, formcpd_type='gseg_union', verbose=True)
 
         # Set 'stats_saved' value for the match to 1 to avoid redundant executions
         rm.activity_records.at[i, LABEL_STATS_SAVED] = 1

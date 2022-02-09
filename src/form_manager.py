@@ -71,15 +71,15 @@ class FormManager:
 
     @staticmethod
     def visualize_single_graph(coords, edge_mat, labels=None):
-        plt.figure(figsize=(10, 7))
+        plt.figure(figsize=(7, 5))
         plt.scatter(coords[:, 0], coords[:, 1], c=np.arange(10)+1,
-                    s=1000, vmin=0.5, vmax=10.5, cmap='tab10', zorder=1)
+                    s=2000, vmin=0.5, vmax=10.5, cmap='tab10', zorder=1)
 
         if labels is None:
             labels = np.arange(11)
-            fontsize = 20
+            fontsize = 30
         else:
-            fontsize = 14
+            fontsize = 20
 
         for i in np.arange(10):
             plt.annotate(labels[i+1], xy=coords[i], ha='center', va='center',
@@ -90,8 +90,10 @@ class FormManager:
 
         xlim = 3000
         ylim = 2400
-        plt.xlim(-xlim - 500, xlim + 500)
-        plt.ylim(-ylim - 500, ylim + 500)
+        # plt.xlim(-xlim - 500, xlim + 500)
+        # plt.ylim(-ylim - 500, ylim + 500)
+        plt.xlim(-xlim, xlim)
+        plt.ylim(-ylim, ylim)
         plt.vlines([-xlim, 0, xlim], ymin=-ylim, ymax=ylim, color='k', zorder=0)
         plt.hlines([-ylim, ylim], xmin=-xlim, xmax=xlim, color='k', zorder=0)
         plt.axis('off')
@@ -121,7 +123,10 @@ class FormManager:
         plt.hlines([-ylim, ylim], xmin=-xlim, xmax=xlim, color='k', zorder=0)
         plt.axis('off')
 
-    def visualize(self, group_type=LABEL_FORMATION, ignore_outliers=False, paint=True, annotate=True, save=False):
+    def visualize(
+        self, group_type=LABEL_FORMATION, ignore_outliers=False,
+        paint=True, annotate=True, save=False
+    ):
         counts = self.form_periods[group_type].value_counts()
         for group in np.sort(self.form_periods[group_type].unique()):
             if ignore_outliers and (group == -1 or group == 'others'):
