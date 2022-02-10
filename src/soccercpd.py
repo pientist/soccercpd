@@ -248,7 +248,8 @@ class SoccerCPD:
             perms = fgp_df.pivot_table(LABEL_ROLE, LABEL_DATETIME, LABEL_PLAYER_ID, 'first')
             if perms.empty:
                 continue
-            role_set = set(perms.dropna().iloc[0])
+            # role_set = set(perms.dropna().iloc[0])
+            role_set = set(np.arange(10) + 1)
             perms = perms.apply(SoccerCPD.complete_perm, axis=1, args=(role_set,)).astype(int)
             perms_str = perms.apply(lambda perm: np.array2string(perm.values), axis=1)
             base_perm_list = np.fromstring(SoccerCPD.most_common(perms_str)[1:-1], dtype='float32', sep=' ')

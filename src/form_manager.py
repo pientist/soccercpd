@@ -67,9 +67,13 @@ class FormManager:
             print(f"Roles aligned for {group_type} '{group}'")
 
         role_aligns = pd.concat(role_aligns_list)[HEADER_ROLE_ALIGNS[:-2]]
-        self.role_records = pd.merge(pd.merge(
-            self.role_records, self.form_periods[[LABEL_ACTIVITY_ID, LABEL_FORM_PERIOD, LABEL_FORMATION]]
-        ), role_aligns).sort_values([LABEL_ACTIVITY_ID, LABEL_ROLE_PERIOD, LABEL_SQUAD_NUM], ignore_index=True)
+        self.role_records = pd.merge(
+            self.role_records[HEADER_ROLE_RECORDS],
+            self.form_periods[[LABEL_ACTIVITY_ID, LABEL_FORM_PERIOD, LABEL_FORMATION]]
+        )
+        self.role_records = pd.merge(
+            self.role_records, role_aligns
+        ).sort_values([LABEL_ACTIVITY_ID, LABEL_ROLE_PERIOD, LABEL_SQUAD_NUM], ignore_index=True)
 
     @staticmethod
     def visualize_single_graph(coords, edge_mat, labels=None):
@@ -81,7 +85,7 @@ class FormManager:
             labels = np.arange(11)
             fontsize = 20
         else:
-            fontsize = 20
+            fontsize = 15
 
         for i in np.arange(10):
             plt.annotate(labels[i+1], xy=coords[i], ha='center', va='center',
