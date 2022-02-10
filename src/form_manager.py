@@ -10,7 +10,7 @@ pd.set_option('display.width', 250)
 pd.set_option('display.max_rows', 100)
 pd.set_option('display.max_columns', 20)
 plt.rcParams['font.size'] = 15
-# plt.rcParams['font.family'] = 'Arial'
+plt.rcParams['font.family'] = 'Arial'
 
 
 class FormManager:
@@ -25,12 +25,14 @@ class FormManager:
 
         role_aligns[LABEL_ACTIVITY_ID] = 0
         role_aligns[LABEL_FORM_PERIOD] = 0
-        role_aligns[LABEL_BASE_ROLE] = np.repeat(np.arange(10)[np.newaxis, :] + 1, form_periods.shape[0], axis=0).flatten()
+
+        base_roles_repeated = np.repeat(np.arange(10)[np.newaxis, :] + 1, form_periods.shape[0], axis=0)
+        role_aligns[LABEL_BASE_ROLE] = base_roles_repeated.flatten()
         role_aligns[LABEL_ALIGNED_ROLE] = coloring_model.labels_
 
         mean_coords = role_aligns.groupby(LABEL_ALIGNED_ROLE)[[LABEL_X, LABEL_Y]].mean().values
         
-        for i in range(3):
+        for _ in range(3):
             for i, coords in enumerate(form_periods[LABEL_COORDS]):
                 assign_cost_mat = distance_matrix(mean_coords, coords)
                 _, perm = linear_sum_assignment(assign_cost_mat)
@@ -64,7 +66,7 @@ class FormManager:
             role_aligns_list.append(FormManager.align_group(form_periods))
             print(f"Roles aligned for {group_type} '{group}'")
 
-        role_aligns = pd.concat(role_aligns_list)
+        role_aligns = pd.concat(role_aligns_list)[HEADER_ROLE_ALIGNS[:-2]]
         self.role_records = pd.merge(pd.merge(
             self.role_records, self.form_periods[[LABEL_ACTIVITY_ID, LABEL_FORM_PERIOD, LABEL_FORMATION]]
         ), role_aligns).sort_values([LABEL_ACTIVITY_ID, LABEL_ROLE_PERIOD, LABEL_SQUAD_NUM], ignore_index=True)
@@ -73,11 +75,11 @@ class FormManager:
     def visualize_single_graph(coords, edge_mat, labels=None):
         plt.figure(figsize=(7, 5))
         plt.scatter(coords[:, 0], coords[:, 1], c=np.arange(10)+1,
-                    s=2000, vmin=0.5, vmax=10.5, cmap='tab10', zorder=1)
+                    s=1000, vmin=0.5, vmax=10.5, cmap='tab10', zorder=1)
 
         if labels is None:
             labels = np.arange(11)
-            fontsize = 30
+            fontsize = 20
         else:
             fontsize = 20
 
@@ -102,18 +104,18 @@ class FormManager:
         if self.role_records is not None and LABEL_ALIGNED_ROLE in self.role_records.columns:
             role_records = self.role_records[self.role_records[group_type] == group]
         else:
-            form_periods = self.form_periods[self.form_periods[group_type] == group].reset_index()
-            role_records = FormManager.align_group(form_periods)
+            form_periods = self.form_periods[self.form_periods[group_type] == group]
+            role_records = FormManager.align_group(form_periods.reset_index(drop=True))
         colors = role_records[LABEL_ALIGNED_ROLE] if paint else 'gray'
 
-        plt.figure()
-        plt.scatter(role_records[LABEL_X], role_records[LABEL_Y], s=100, alpha=0.5, c=colors, cmap='tab10', zorder=0)
+        plt.figure(figsize=(7, 5))
+        plt.scatter(role_records[LABEL_X], role_records[LABEL_Y], s=150, alpha=0.5, c=colors, cmap='tab10', zorder=0)
 
         if annotate:
             mean_coords = role_records.groupby(LABEL_ALIGNED_ROLE)[[LABEL_X, LABEL_Y]].mean()
-            plt.scatter(mean_coords[LABEL_X], mean_coords[LABEL_Y], s=500, c='w', edgecolors='k', zorder=1)
+            plt.scatter(mean_coords[LABEL_X], mean_coords[LABEL_Y], s=1000, c='w', edgecolors='k', zorder=1)
             for r in mean_coords.index:
-                plt.annotate(r, xy=mean_coords.loc[r], ha='center', va='center', fontsize=15, zorder=2)
+                plt.annotate(r, xy=mean_coords.loc[r], ha='center', va='center', fontsize=25, zorder=2)
 
         xlim = 3000
         ylim = 3000
@@ -133,6 +135,6 @@ class FormManager:
                 continue
             self.visualize_group(group, group_type, paint, annotate)
             if save:
-                plt.savefig(f'img/{group_type}_{group}.pdf', bbox_inches='tight')
+                plt.savefig(f'img/{group_type}_{group}.png', bbox_inches='tight')
             title = f"{group_type[0].upper() + group_type[1:]} {group} -  {counts[group]} periods"
             plt.title(title)

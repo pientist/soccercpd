@@ -246,6 +246,8 @@ class SoccerCPD:
         for i in self.player_periods.index[1:]:
             fgp_df = self.fgp_df[self.fgp_df[LABEL_PLAYER_PERIOD] == i]
             perms = fgp_df.pivot_table(LABEL_ROLE, LABEL_DATETIME, LABEL_PLAYER_ID, 'first')
+            if perms.empty:
+                continue
             role_set = set(perms.dropna().iloc[0])
             perms = perms.apply(SoccerCPD.complete_perm, axis=1, args=(role_set,)).astype(int)
             perms_str = perms.apply(lambda perm: np.array2string(perm.values), axis=1)
@@ -276,7 +278,6 @@ class SoccerCPD:
                 lambda x: datetime.strptime(x, '%Y-%m-%d %H:%M:%S')
             )
             self.reset_precomputed_fgp()
-            print(self.fgp_df[self.fgp_df[LABEL_BASE_ROLE].isna()])
 
         # Initialize formation and role period labels by the session labels
         self.ugp_df[LABEL_FORM_PERIOD] = self.ugp_df[LABEL_SESSION]
@@ -359,7 +360,8 @@ class SoccerCPD:
             perm_list.append(perms_str.rename(LABEL_PERM).to_frame())
             
             for form_chg_idx in range(1, len(form_chg_dts)):
-                form_period = len(self.form_periods) + 1
+                # form_period = len(self.form_periods) + 1
+                form_period = session
 
                 form_start_dt = form_chg_dts[form_chg_idx - 1]
                 form_end_dt = form_chg_dts[form_chg_idx]
@@ -420,8 +422,9 @@ class SoccerCPD:
                             LABEL_BASE_PERM: base_perm_dict
                         }, ignore_index=True)
 
-        self.fgp_df = pd.concat(fgp_list, ignore_index=True)
-        if self.fgp_df.empty:
+        if fgp_list:
+            self.fgp_df = pd.concat(fgp_list, ignore_index=True)
+        else:
             return
 
         if not self.apply_cpd:
@@ -434,6 +437,9 @@ class SoccerCPD:
             base_perm_list = []
             for i in self.player_periods.index[1:]:
                 period_perms_str = perms_str[perms_str[LABEL_PLAYER_PERIOD] == i]
+                if period_perms_str.empty:
+                    continue
+
                 session = self.player_periods.at[i, LABEL_SESSION]
                 period_perms_str[LABEL_SESSION] = session
                 period_perms_str[LABEL_FORM_PERIOD] = session
@@ -475,7 +481,6 @@ class SoccerCPD:
         )
 
         # Reflect the instructed roles and recompute switch rates in fgp_df
-        print(self.fgp_df)
         self.fgp_df = self.fgp_df.apply(self.reassign_base_role, axis=1)
         self.fgp_df = self.fgp_df.groupby(LABEL_DATETIME).apply(SoccerCPD.recompute_switch_rate)
         self.fgp_df, self.form_periods = SoccerCPD.align_formations(self.fgp_df, self.form_periods)
