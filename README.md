@@ -5,8 +5,8 @@
 </div>
 
 ## Original Paper
-This repository includes the source code for the following paper and tracking data from a sample match (`245.ugp`). Please cite when using our code or the sample match data.
-- **SoccerCPD: Formation and role change-point detection in football matches from spatiotemporal tracking data**, Hyunsung Kim, Bit Kim, Dongwook Chung, Jinsung Yoon, and Sang-Ki Ko, 2021.
+This repository includes the source code for the following paper and tracking data from a sample match (`17985.ugp`). Please cite when using our code or the sample match data.
+- **SoccerCPD: Formation and role change-point detection in soccer matches from spatiotemporal tracking data**, Hyunsung Kim, Bit Kim, Dongwook Chung, Jinsung Yoon, and Sang-Ki Ko, 2022.
 
 ## Introduction
 **SoccerCPD** is a change-point detection framework that distinguishes tactically intended formation and role changes from temporary changes in football matches using spatiotemporal tracking data.<br>
@@ -16,7 +16,7 @@ Here is an example of applying SoccerCPD to a match. It shows that the match is 
 
 ![timeline](img/timeline_formation.png)<br>
 
-We cannot share the entire dataset due to the security issue, but every process except for the formation clustering can be reproduced using the sample match data (`245.ugp`) since applying our method to a match does not require data from other matches. For the formation clustering step in Section 4.1.3 of the paper, we offer `data/form_periods.pkl` that contains the mean role locations and mean role-adjacency matrices of all the detected formations in our dataset.<br>
+We cannot share the entire dataset due to the security issue, but every process except for the formation clustering can be reproduced using the sample match data (`17985.ugp`) since applying our method to a match does not require data from other matches. For the formation clustering (Section 4.3) and role labeling (Section 5.3) steps of the paper, we offer `data/form_periods.pkl`, `data/role_periods.csv`, and `data/role_records.csv` that contains the information of all the detected formations and roles in our dataset.<br>
 
 ## Getting Started
 We have implemented the role representation algorithm using Python on our own, while adopted the R package `gSeg` for discrete g-segmentation. Therefore, **both Python and R need to be installed for executing the code.** The version we have used in this study are as follows:
@@ -31,23 +31,22 @@ After installing the necessary languages, you need to install the packages liste
 pip install -r requirements.txt
 ```
 
-Subsequently, please download the sample match data (named `245.ugp`) from the following Google Drive link and move it into the directory `data/ugp`.
-- Link for the data: https://bit.ly/3E9W3QV
+Subsequently, please download the sample match data (named `17985.ugp`) from the following Google Drive link and move it into the directory `data/ugp`.
+- Link for the data: https://bit.ly/3gHhkHG
 
-Finally, you can run the algorithm for the sample match data simply by executing `src/main.py`.
+Finally, you can run the algorithm for the sample match data simply by executing `main.py`.
 ```
-python -m src.main
+python -m main
 ```
 
-For further analyses, open `tutorial.ipynb` and run the cells in order from the above. (Section 4 except for 4.1.3)
+For further analyses, open `tutorial.ipynb` and run the cells in order from the above. (Section 4.1, 4.2, 5.1, and 5.2)
 
 You can also reproduce the results described in the paper by executing the following notebooks:
 
-- `src/1_formaiont_clustering.ipynb` (Section 4.1.3)
-- `src/2_role_labeling.ipynb` (Section 4.2.3)
-- `src/3_model_evaluation.ipynb` (Section 5.1)
-- `src/4_switching_pattern_discovery.ipynb` (Section 5.2)
-- `src/appendix_case_study.ipynb` (Section 2 of Appendix)<br>
+- `notebooks/1_formaiont_clustering.ipynb` (Section 4.3)
+- `notebooks/2_role_labeling.ipynb` (Section 5.3)
+- `notebooks/3_model_evaluation.ipynb` (Section 6.1)
+- `notebooks/5_switching_pattern_discovery.ipynb` (Section 6.2)<br>
 
 Lastly, we visualize our results as animations using Tableau 2020.4. The full-version videos are available in https://bit.ly/3GaaAOc (animation for a single team) and https://bit.ly/3m2XUR5 (animation for both teams competing in a match) with the description in Section 3 in the supplementary paper.<br>
 
