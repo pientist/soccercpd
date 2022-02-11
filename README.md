@@ -48,7 +48,7 @@ You can also reproduce the results described in the paper by executing the follo
 - `notebooks/3_model_evaluation.ipynb` (Section 6.1)
 - `notebooks/5_switching_pattern_discovery.ipynb` (Section 6.2)<br>
 
-Lastly, we visualize our results as animations using Tableau 2020.4. The full-version videos are available in https://bit.ly/3GaaAOc (animation for a single team) and https://bit.ly/3m2XUR5 (animation for both teams competing in a match) with the description in Section 3 in the supplementary paper.<br>
+Lastly, we visualize our results as animations using Tableau 2020.4. The full-version video is available in https://www.youtube.com/watch?v=F-tvG1-MLps with the description in Appendix C of the paper.<br>
 
 ## References
 - Bialkowski, A., Lucey, P., Carr, P., Yue, Y., Sridharan, S., and Matthews, I. (2014). Large-scale analysis of soccer matches using spatiotemporal tracking data. In IEEE International Conference on Data Mining.
