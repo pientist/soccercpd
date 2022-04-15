@@ -7,15 +7,20 @@ pd.options.mode.chained_assignment = None
 
 # For match data preprocessing
 class Match:
-    def __init__(self, activity_record, player_periods, roster, ugp_df, pitch_size=(10800, 7200), outliers=None):
+    def __init__(self, activity_record, roster, ugp_df, pitch_size=(10800, 7200)):
         self.record = activity_record
-        self.player_periods = player_periods
+        self.roster = roster
         self.ugp_df = ugp_df
-        self.roster = self._upgrade_roster(roster, outliers)
+        self.player_periods = None
         self.pitch_size = pitch_size
 
-    # Synchronize the player movement data with the official roster
-    def _upgrade_roster(self, roster, outliers=None):
+    # Synchronize the player data with the official roster
+    def upgrade_roster(self, player_periods, outliers=None):
+        if LABEL_PLAYER_PERIOD in player_periods.columns:
+            self.player_periods = player_periods.set_index(LABEL_PLAYER_PERIOD)[HEADER_PLAYER_PERIODS[2:]]
+        else:
+            self.player_periods = player_periods[HEADER_PLAYER_PERIODS[2:]]
+
         if outliers is not None:
             self.ugp_df = self.ugp_df[~self.ugp_df[LABEL_PLAYER_ID].isin(outliers)]
             for period in self.player_periods.index:
@@ -23,28 +28,28 @@ class Match:
                 self.player_periods.at[period, LABEL_PLAYER_IDS] = list(set(player_ids) - set(outliers))
 
         player_ids = []
-        for player_id in roster.index:
+        for player_id in self.roster.index:
             if not self.ugp_df[self.ugp_df[LABEL_PLAYER_ID] == player_id].empty:
                 player_ids.append(player_id)
             if player_id not in self.player_periods.at[0, LABEL_PLAYER_IDS]:
                 # Change 'player_name' to 0 for the player not in the official roster,
                 # so that it can be filtered to be manually checked
-                roster.at[player_id, LABEL_PLAYER_NAME] = 0
-        roster = roster.loc[player_ids]
+                self.roster.at[player_id, LABEL_PLAYER_NAME] = 0
+        self.roster = self.roster.loc[player_ids]
 
         if len(self.player_periods) > 1:
             for period in self.player_periods.index[1:]:
-                roster[period] = 0
-                for player_id in roster.index:
+                self.roster[period] = 0
+                for player_id in self.roster.index:
                     if player_id in self.player_periods.at[period, LABEL_PLAYER_IDS]:
-                        roster.at[player_id, period] = 1
-            return roster.sort_values(by=[1, LABEL_SQUAD_NUM], ascending=[False, True]).reset_index()
+                        self.roster.at[player_id, period] = 1
+            self.roster = self.roster.sort_values(by=[1, LABEL_SQUAD_NUM], ascending=[False, True]).reset_index()
         else:
-            return roster.sort_values(LABEL_SQUAD_NUM).reset_index()
+            self.roster = self.roster.sort_values(LABEL_SQUAD_NUM).reset_index()
 
     # Compute relative elapsed time in a session from unixtime
     @staticmethod
-    def _compute_gametime(current_ut, start_ut):
+    def compute_gametime(current_ut, start_ut):
         seconds_total = current_ut - start_ut
         minutes = int(seconds_total / SCALAR_TIME)
         seconds_rest = seconds_total % SCALAR_TIME
@@ -82,7 +87,7 @@ class Match:
                         session_start_ut = (start_dt - datetime(1970, 1, 1)).total_seconds()
                     period_ugp_df[LABEL_UNIXTIME] = period_ugp_df.index.view(np.int64) // SCALAR_MICRO / SCALAR_MILLI
                     period_ugp_df[LABEL_GAMETIME] = period_ugp_df[LABEL_UNIXTIME].apply(
-                        lambda x: self._compute_gametime(x, session_start_ut)
+                        lambda x: Match.compute_gametime(x, session_start_ut)
                     )
                     period_ugp_df[LABEL_DURATION] = float(freq[:-1])
 

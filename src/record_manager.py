@@ -47,9 +47,9 @@ class RecordManager:
 
     def load_activity_data(self, activity_id):
         activity_record = self.activity_records[self.activity_records[LABEL_ACTIVITY_ID] == activity_id].iloc[0]
-        player_periods = self.player_periods[self.player_periods[LABEL_ACTIVITY_ID] == activity_id]
-        player_periods = player_periods.set_index(LABEL_PLAYER_PERIOD)[HEADER_PLAYER_PERIODS[2:]]
+        # player_periods = self.player_periods[self.player_periods[LABEL_ACTIVITY_ID] == activity_id]
+        # player_periods = player_periods.set_index(LABEL_PLAYER_PERIOD)[HEADER_PLAYER_PERIODS[2:]]
         player_records = self.player_records[self.player_records[LABEL_ACTIVITY_ID] == activity_id]
         roster = player_records[HEADER_ROSTER].drop_duplicates().set_index(LABEL_PLAYER_ID)
         ugp_df = pd.read_pickle(f'{DIR_UGP_DATA}/{activity_id}.ugp')
-        return activity_record, player_periods, roster, ugp_df
+        return activity_record, roster, ugp_df
