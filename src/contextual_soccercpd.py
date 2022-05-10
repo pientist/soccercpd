@@ -18,3 +18,4 @@ class ContextualSoccerCPD(SoccerCPD):
         max_sr=MAX_SWITCH_RATE, max_pval=MAX_PVAL, min_pdur=MIN_PERIOD_DUR, min_fdist=MIN_FORM_DIST
     ):
         super().__init__(match, apply_cpd, formcpd_type, rolecpd_type, max_sr, max_pval, min_pdur, min_fdist)
+

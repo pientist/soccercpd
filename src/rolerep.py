@@ -16,8 +16,8 @@ pd.set_option('display.max_columns', 20)
 
 # Frame-by-frame role assignment proposed by Bialkowski et al. (2014)
 class RoleRep:
-    def __init__(self, ugp_df_):
-        self.ugp_df = ugp_df_
+    def __init__(self, ugp_df):
+        self.ugp_df = ugp_df
         self.fgp_df = None
         self.role_distns = None
 
@@ -41,8 +41,8 @@ class RoleRep:
             player_fgp_df[LABEL_Y] = resampler[LABEL_Y].mean().round()
             player_fgp_df[LABEL_X_NORM] = np.nan
             player_fgp_df[LABEL_Y_NORM] = np.nan
-            player_fgp_df[LABEL_FORM_PERIOD] = resampler[LABEL_FORM_PERIOD].last()
-            player_fgp_df[LABEL_ROLE_PERIOD] = resampler[LABEL_ROLE_PERIOD].last()
+            player_fgp_df[LABEL_FORM_PERIOD] = resampler[LABEL_SESSION].last()
+            player_fgp_df[LABEL_ROLE_PERIOD] = resampler[LABEL_SESSION].last()
             player_fgp_df[LABEL_ROLE] = role
             player_fgp_df[LABEL_BASE_ROLE] = role
             player_fgp_df[LABEL_SWITCH_RATE] = 0
@@ -123,8 +123,8 @@ class RoleRep:
                 lambda n: pd.Series(-np.log(n.pdf(self.fgp_df[[LABEL_X_NORM, LABEL_Y_NORM]])))
             ).transpose().values, index=self.fgp_df.index)
             fgp_cost_df = pd.concat([self.fgp_df, cost_df], axis=1)
-            costs = fgp_cost_df.groupby(LABEL_DATETIME).apply(self.hungarian, self.role_distns).mean()
-            cost_new = costs.mean()
+            costs = fgp_cost_df.groupby([LABEL_PLAYER_PERIOD, LABEL_DATETIME]).apply(self.hungarian, self.role_distns)
+            cost_new = costs.mean().mean()
             if verbose:
                 print('- Cost after iteration {0}: {1:.3f}'.format(i_iter + 1, cost_new))
             self.role_distns = RoleRep.update_params(self.fgp_df)

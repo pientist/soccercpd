@@ -361,8 +361,8 @@ class SoccerCPD:
             perm_list.append(perms_str.rename(LABEL_PERM).to_frame())
             
             for form_chg_idx in range(1, len(form_chg_dts)):
-                # form_period = len(self.form_periods) + 1
-                form_period = session
+                form_period = len(self.form_periods) + 1
+                # form_period = session
 
                 form_start_dt = form_chg_dts[form_chg_idx - 1]
                 form_end_dt = form_chg_dts[form_chg_idx]
@@ -471,7 +471,7 @@ class SoccerCPD:
         self.role_periods.set_index(LABEL_ROLE_PERIOD, inplace=True)
 
         # Label formation and role periods to the timestamps in fgp_df
-        match_end_dt = self.player_periods[LABEL_END_DT].iloc[-1]
+        match_end_dt = self.player_periods[LABEL_END_DT].iloc[-1] + timedelta(seconds=int(freq[:-1]))
         form_bins = self.form_periods[LABEL_START_DT].tolist() + [match_end_dt]
         role_bins = self.role_periods[LABEL_START_DT].tolist() + [match_end_dt]
         self.fgp_df[LABEL_FORM_PERIOD] = pd.cut(
@@ -528,15 +528,19 @@ class SoccerCPD:
                 role_period_to = role_period_records[LABEL_ROLE_PERIOD].iloc[-1]
                 plt.title(f'Role Periods {role_period_from}-{role_period_to}', fontsize=20)
 
-            plt.scatter(-fgp_df[LABEL_Y_NORM], fgp_df[LABEL_X_NORM],
-                        c=fgp_df[LABEL_ROLE], vmin=0.5, vmax=10.5, cmap='tab10', alpha=0.4, zorder=0)
+            plt.scatter(
+                -fgp_df[LABEL_Y_NORM], fgp_df[LABEL_X_NORM],
+                c=fgp_df[LABEL_ROLE], cmap='tab10', vmin=0.5, vmax=10.5,  alpha=0.4, zorder=0
+            )
             plt.scatter(role_coords[:, 0], role_coords[:, 1], s=500, c='w', edgecolors='k', zorder=2)
 
             for r in np.arange(10):
                 plt.annotate(r + 1, xy=role_coords[r], ha='center', va='center', fontsize=20, zorder=3)
                 for s in np.arange(10):
-                    plt.plot(role_coords[[r, s], 0], role_coords[[r, s], 1],
-                             linewidth=edge_mat[r, s] ** 2 * 4, c='k', zorder=1)
+                    plt.plot(
+                        role_coords[[r, s], 0], role_coords[[r, s], 1],
+                        linewidth=edge_mat[r, s] ** 2 * 4, c='k', zorder=1
+                    )
 
             plt.xlim(-xlim, xlim)
             plt.ylim(-ylim, ylim)
@@ -549,33 +553,47 @@ class SoccerCPD:
         ax.set_position([box.x0 + box.width * 0.1, box.y0, box.width * 0.85, box.height * 0.9])
         plt.title('Timeline of Instructed Roles', fontsize=20)
 
-        role_assigns = self.fgp_df.groupby(LABEL_PLAYER_ID).apply(
-            lambda df: df.set_index(LABEL_DATETIME).resample('1T', closed='right', label='left')[
-                [LABEL_SESSION, LABEL_GAMETIME, LABEL_BASE_ROLE]].first()
-        ).reset_index().dropna()
-        role_assigns = pd.merge(self.match.roster, role_assigns)
-        role_assigns[LABEL_SESSION] = role_assigns[LABEL_SESSION].astype(int)
+        cols = [LABEL_SESSION, LABEL_PLAYER_PERIOD, LABEL_ROLE_PERIOD, LABEL_BASE_ROLE, LABEL_GAMETIME]
+        session_start_dts = self.role_periods.groupby(LABEL_SESSION)[LABEL_START_DT].min()
+        role_assigns = []
+        for session in session_start_dts.index:
+            session_fgp_df = self.fgp_df[self.fgp_df[LABEL_SESSION] == session].set_index(LABEL_DATETIME)
+            session_start_dt = session_start_dts.loc[session]
+            offset = f'{session_start_dt.minute * SCALAR_TIME + session_start_dt.second}S'
+            role_assigns.append(session_fgp_df.groupby(LABEL_PLAYER_ID).apply(
+                lambda df: df.resample('1T', closed='right', label='left', offset=offset)[cols].first()
+            ).reset_index().dropna())
+
+        role_assigns = pd.merge(self.match.roster, pd.concat(role_assigns, ignore_index=True))
+        role_assigns[cols[:-1]] = role_assigns[cols[:-1]].astype(int)
         role_assigns[LABEL_GAMETIME] = role_assigns.apply(
             lambda df: f'S{df[LABEL_SESSION]}-{df[LABEL_GAMETIME][:2]}T', axis=1
         )
         role_assigns[LABEL_PLAYER_NAME] = role_assigns.apply(
-            lambda df: 'Player No.{:02d}'.format(df[LABEL_SQUAD_NUM]), axis=1
+            lambda df: f'Player No.{df[LABEL_SQUAD_NUM]:02d}', axis=1
         )
-        role_assigns.sort_values(by=LABEL_SQUAD_NUM, inplace=True)
-        role_assigns_2d = role_assigns.pivot_table(
-            values=LABEL_BASE_ROLE, index=LABEL_PLAYER_NAME, columns=LABEL_GAMETIME, aggfunc='first'
-        )
-        sns.heatmap(role_assigns_2d, vmin=0.5, vmax=10.5, cmap='tab10', cbar=False)
+        role_assigns.sort_values(by=[LABEL_SQUAD_NUM, LABEL_DATETIME], inplace=True)
 
-        duration = 0
-        vline_idxs = []
-        for idx in self.role_periods.index[:-1]:
-            duration += self.role_periods.at[idx, LABEL_DURATION]
-            vline_idxs.append(math.ceil(duration / SCALAR_TIME))
-        plt.vlines(vline_idxs, ymin=0, ymax=len(role_assigns_2d), colors='k', linestyles='--')
+        role_assigns_2d = role_assigns.pivot_table(LABEL_BASE_ROLE, LABEL_GAMETIME, LABEL_PLAYER_NAME, 'first')
+        role_assigns_2d[LABEL_PLAYER_PERIOD] = role_assigns.groupby(LABEL_GAMETIME)[LABEL_PLAYER_PERIOD].min()
+        role_assigns_2d[LABEL_ROLE_PERIOD] = role_assigns.groupby(LABEL_GAMETIME)[LABEL_ROLE_PERIOD].min()
+        roster = role_assigns[self.match.roster.columns[2:]].drop_duplicates()
+        for i in roster.columns[1:]:
+            out_players = roster[roster[i] == 0][LABEL_PLAYER_NAME].tolist()
+            role_assigns_2d.loc[role_assigns_2d[LABEL_PLAYER_PERIOD] == i, out_players] = np.nan
+        sns.heatmap(role_assigns_2d[roster[LABEL_PLAYER_NAME]].T, vmin=0.5, vmax=10.5, cmap='tab10', cbar=False)
+
+        # duration = 0
+        # vline_idxs = []
+        # for idx in self.role_periods.index[:-1]:
+        #     duration += self.role_periods.at[idx, LABEL_DURATION]
+        #     vline_idxs.append(math.ceil(duration / SCALAR_TIME))
+
+        vline_idxs = role_assigns_2d[LABEL_ROLE_PERIOD].value_counts(sort=False).cumsum().tolist()[:-1]
+        plt.vlines(vline_idxs, ymin=0, ymax=role_assigns_2d.shape[1], colors='k', linestyles='--')
 
         vline_idxs.append(0)
-        plt.xticks(ticks=vline_idxs, labels=role_assigns_2d.columns[vline_idxs].tolist(), rotation=45)
+        plt.xticks(ticks=vline_idxs, labels=role_assigns_2d.index[vline_idxs].tolist(), rotation=45)
         plt.xlabel('session-time')
         plt.ylabel('player')
 

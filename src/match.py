@@ -9,9 +9,9 @@ pd.options.mode.chained_assignment = None
 class Match:
     def __init__(self, activity_record, roster, ugp_df, pitch_size=(10800, 7200)):
         self.record = activity_record
+        self.player_periods = None
         self.roster = roster
         self.ugp_df = ugp_df
-        self.player_periods = None
         self.pitch_size = pitch_size
 
     # Synchronize the player data with the official roster
