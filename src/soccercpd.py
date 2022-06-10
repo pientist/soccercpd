@@ -294,7 +294,9 @@ class SoccerCPD:
             session_end_dt = pd.to_datetime(player_periods[LABEL_END_DT].iloc[-1])
             ugp_df = self.ugp_df[self.ugp_df[LABEL_SESSION] == session]
 
-            if ugp_df[ugp_df[LABEL_X].notna()].groupby(LABEL_UNIXTIME)[LABEL_PLAYER_ID].apply(len).max() < 10:
+            grouped = ugp_df[ugp_df[LABEL_X].notna()].groupby([LABEL_SESSION, LABEL_GAMETIME])
+            player_count = grouped[LABEL_PLAYER_ID].apply(len).max()
+            if player_count < 10:
                 # If less than 10 players have been measured during the session, skip the process
                 print('Not enough players to estimate a formation.')
                 continue
@@ -471,7 +473,7 @@ class SoccerCPD:
         self.role_periods.set_index(LABEL_ROLE_PERIOD, inplace=True)
 
         # Label formation and role periods to the timestamps in fgp_df
-        match_end_dt = self.player_periods[LABEL_END_DT].iloc[-1] + timedelta(seconds=int(freq[:-1]))
+        match_end_dt = self.player_periods[LABEL_END_DT].iloc[-1] + timedelta(seconds=float(freq[:-1]))
         form_bins = self.form_periods[LABEL_START_DT].tolist() + [match_end_dt]
         role_bins = self.role_periods[LABEL_START_DT].tolist() + [match_end_dt]
         self.fgp_df[LABEL_FORM_PERIOD] = pd.cut(
