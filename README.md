@@ -6,7 +6,7 @@
 
 ## Original Paper
 This repository includes the source code for the following paper and tracking data from a sample match (`17985.ugp`). Please cite when using our code or the sample match data.
-- **SoccerCPD: Formation and role change-point detection in soccer matches from spatiotemporal tracking data**, Hyunsung Kim, Bit Kim, Dongwook Chung, Jinsung Yoon, and Sang-Ki Ko, 2022.
+- Hyunsung Kim, Bit Kim, Dongwook Chung, Jinsung Yoon, and Sang-Ki Ko (2022). **SoccerCPD: Formation and role change-point detection in soccer matches from spatiotemporal tracking data**. In ACM SIGKDD Conference on Knowledge Discovery and Data Mining (to appear).
 
 ## Introduction
 **SoccerCPD** is a change-point detection framework that distinguishes tactically intended formation and role changes from temporary changes in football matches using spatiotemporal tracking data.<br>
