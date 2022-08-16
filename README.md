@@ -6,7 +6,7 @@
 
 ## Original Paper
 This repository includes the source code for the following paper and tracking data from a sample match (`17985.ugp`). Please cite when using our code or the sample match data.
-- Hyunsung Kim, Bit Kim, Dongwook Chung, Jinsung Yoon, and Sang-Ki Ko (2022). **SoccerCPD: Formation and role change-point detection in soccer matches from spatiotemporal tracking data**. In ACM SIGKDD Conference on Knowledge Discovery and Data Mining (to appear).
+- H. Kim, B. Kim, D. Chung, J. Yoon and S.-K. Ko, **SoccerCPD: Formation and role change-point detection in soccer matches from spatiotemporal tracking data**, ACM SIGKDD Conference on Knowledge Discovery and Data Mining, 2022, DOI: https://dl.acm.org/doi/10.1145/3534678.3539150.
 
 ## Introduction
 **SoccerCPD** is a change-point detection framework that distinguishes tactically intended formation and role changes from temporary changes in football matches using spatiotemporal tracking data.<br>
@@ -51,5 +51,5 @@ You can also reproduce the results described in the paper by executing the follo
 Lastly, we visualize our results as animations using Tableau 2020.4. The full-version video is available in https://www.youtube.com/watch?v=F-tvG1-MLps with the description in Appendix C of the paper.<br>
 
 ## References
-- Bialkowski, A., Lucey, P., Carr, P., Yue, Y., Sridharan, S., and Matthews, I. (2014). Large-scale analysis of soccer matches using spatiotemporal tracking data. In IEEE International Conference on Data Mining.
-- Song, H. and Chen, H. (2020). Asymptotic distribution-free change-point detection for data with repeated observations.
+- A. Bialkowski, P. Lucey, P. Carr, Y. Yue, S. Sridharan and I. Matthews, Large-Scale Analysis of Soccer Matches Using Spatiotemporal Tracking Data, IEEE International Conference on Data Mining, 2014, DOI: https://doi.org/10.1109/ICDM.2014.133.
+- H. Song and H. Chen, Asymptotic distribution-free changepoint detection for data with repeated observations, Biometrika, 2021, asab048, DOI: https://doi.org/10.1093/biomet/asab048.
