@@ -4,9 +4,7 @@
 	</h1>
 </div>
 
-## Original Paper
-This repository includes the source code for the following paper and tracking data from a sample match (`17985.ugp`). Please cite when using our code or the sample match data.
-- H. Kim, B. Kim, D. Chung, J. Yoon and S.-K. Ko, **SoccerCPD: Formation and role change-point detection in soccer matches from spatiotemporal tracking data**, ACM SIGKDD Conference on Knowledge Discovery and Data Mining, 2022, DOI: https://dl.acm.org/doi/10.1145/3534678.3539150.
+Source code for the paper [SoccerCPD: Formation and Role Change-Point Detection in Soccer Matches Using Spatiotemporal Tracking Data](https://arxiv.org/abs/2206.10926) by Kim et al., KDD 2022.
 
 ## Introduction
 **SoccerCPD** is a change-point detection framework that distinguishes tactically intended formation and role changes from temporary changes in football matches using spatiotemporal tracking data.<br>
@@ -49,6 +47,28 @@ You can also reproduce the results described in the paper by executing the follo
 - `notebooks/5_switching_pattern_discovery.ipynb` (Section 6.2)<br>
 
 Lastly, we visualize our results as animations using Tableau 2020.4. The full-version video is available in https://www.youtube.com/watch?v=F-tvG1-MLps with the description in Appendix C of the paper.<br>
+
+## Citation
+This repository includes the source code for the following paper and tracking data collected from a sample match (`17985.ugp`). Please cite the paper when using our code or the sample match data.
+```
+@inproceedings{Kim2022,
+  author       = {Kim, Hyunsung and
+                  Kim, Bit and
+                  Chung, Dongwook and
+                  Yoon, Jinsung and
+                  Ko, Sang{-}Ki},
+  title        = {{SoccerCPD}: Formation and Role Change-Point Detection in Soccer Matches
+		  Using Spatiotemporal Tracking Data},
+  booktitle    = {The 28th {ACM} {SIGKDD} Conference on Knowledge Discovery and Data Mining},
+  pages	       = {3146--3156},
+  publisher    = {{ACM}},
+  year         = {2023},
+  location     = {Washington, DC, USA}
+  isbn         = {979-1-4503-9385-0}
+  url          = {https://doi.org/10.1145/3534678.3539150},
+  doi          = {10.1145/3534678.3539150},
+}
+```
 
 ## References
 - A. Bialkowski, P. Lucey, P. Carr, Y. Yue, S. Sridharan and I. Matthews, Large-Scale Analysis of Soccer Matches Using Spatiotemporal Tracking Data, IEEE International Conference on Data Mining, 2014, DOI: https://doi.org/10.1109/ICDM.2014.133.
