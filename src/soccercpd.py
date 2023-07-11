@@ -261,10 +261,10 @@ class SoccerCPD:
             base_perm_list = np.fromstring(SoccerCPD.most_common(perms_str)[1:-1], dtype="float32", sep=" ")
             base_perm_dict = dict(zip(perms.columns, base_perm_list))
             self.fgp.loc[fgp.index, LABEL_BASE_ROLE] = fgp[LABEL_PLAYER_ID].apply(lambda x: base_perm_dict[x])
-        self.fgp = self.fgp.groupby(LABEL_DATETIME).apply(SoccerCPD.recompute_switch_rate)
+        self.fgp = self.fgp.groupby(LABEL_DATETIME, group_keys=False).apply(SoccerCPD.recompute_switch_rate)
 
     def generate_role_records(self):
-        grouped = self.fgp.groupby([LABEL_PLAYER_ID, LABEL_ROLE_PERIOD], as_index=False)
+        grouped = self.fgp.groupby([LABEL_PLAYER_ID, LABEL_ROLE_PERIOD], group_keys=False, as_index=False)
         role_records = grouped[[LABEL_PLAYER_PERIOD, LABEL_BASE_ROLE]].first()
         role_records = pd.merge(role_records, self.role_periods[HEADER_ROLE_PERIODS[:-1]])
 
@@ -300,9 +300,10 @@ class SoccerCPD:
             player_periods = self.player_periods[self.player_periods[LABEL_SESSION] == session]
             session_start_dt = pd.to_datetime(player_periods[LABEL_START_DT].iloc[0])
             session_end_dt = pd.to_datetime(player_periods[LABEL_END_DT].iloc[-1])
-            ugp = self.ugp[self.ugp[LABEL_SESSION] == session]
+            session_ugp = self.ugp[self.ugp[LABEL_SESSION] == session]
 
-            if ugp[ugp[LABEL_X].notna()].groupby(LABEL_UNIXTIME)[LABEL_PLAYER_ID].apply(len).max() < 10:
+            grouper = session_ugp.dropna(subset="x").groupby("gametime", group_keys=False)
+            if grouper["player_id"].apply(len).max() < 10:
                 # If less than 10 players have been measured during the session, skip the process
                 print("Not enough players to estimate a formation.")
                 continue
@@ -315,7 +316,7 @@ class SoccerCPD:
                 print(f"Session FGP data loaded and filtered from '{fgp_path}'.")
             else:
                 print("\n* Step 1: Frame-by-frame role assignment using RoleRep")
-                rolerep = RoleRep(ugp)
+                rolerep = RoleRep(session_ugp)
                 fgp = rolerep.run(freq=freq)
 
             # Exclude situations such as set-pieces that are irrelevant to the team formation
@@ -369,9 +370,7 @@ class SoccerCPD:
             perm_list.append(perms_str.rename(LABEL_PERM).to_frame())
 
             for form_chg_idx in range(1, len(form_chg_dts)):
-                # form_period = len(self.form_periods) + 1
-                form_period = session
-
+                form_period = len(form_periods) + 1
                 form_start_dt = form_chg_dts[form_chg_idx - 1]
                 form_end_dt = form_chg_dts[form_chg_idx]
 
@@ -479,8 +478,8 @@ class SoccerCPD:
             )
             self.role_periods = role_periods[HEADER_ROLE_PERIODS]
 
-        self.form_periods = pd.DataFrame(form_periods).set_index(LABEL_FORM_PERIOD, inplace=True)
-        self.role_periods = pd.DataFrame(role_periods).set_index(LABEL_ROLE_PERIOD, inplace=True)
+        self.form_periods = pd.DataFrame(form_periods).set_index(LABEL_FORM_PERIOD)
+        self.role_periods = pd.DataFrame(role_periods).set_index(LABEL_ROLE_PERIOD)
 
         # Label formation and role periods to the timestamps in fgp
         match_end_dt = self.player_periods[LABEL_END_DT].iloc[-1]
@@ -491,7 +490,7 @@ class SoccerCPD:
 
         # Reflect the instructed roles and recompute switch rates in fgp
         self.fgp = self.fgp.apply(self.reassign_base_role, axis=1)
-        self.fgp = self.fgp.groupby(LABEL_DATETIME).apply(SoccerCPD.recompute_switch_rate)
+        self.fgp = self.fgp.groupby(LABEL_DATETIME, group_keys=False).apply(SoccerCPD.recompute_switch_rate)
         self.fgp, self.form_periods = SoccerCPD.align_formations(self.fgp, self.form_periods)
         self.fgp = pd.merge(self.fgp, self.match.roster[HEADER_ROSTER]).sort_values(
             by=[LABEL_PLAYER_ID, LABEL_DATETIME], ignore_index=True
@@ -516,7 +515,8 @@ class SoccerCPD:
         import matplotlib.pyplot as plt
         import seaborn as sns
 
-        sns.set(font="Arial", rc={"axes.unicode_minus": False}, font_scale=1.5)
+        # sns.set(font="Arial", rc={"axes.unicode_minus": False}, font_scale=1.5)
+        sns.set(font_scale=1.5)
 
         fig = plt.figure(figsize=(19.2, 10.8), dpi=100)
         gs = gridspec.GridSpec(2, 4, left=0.05, right=0.95, wspace=0.3, hspace=0.1)
@@ -587,7 +587,7 @@ class SoccerCPD:
         plt.title("Timeline of Instructed Roles", fontsize=20)
 
         role_assigns = (
-            self.fgp.groupby(LABEL_PLAYER_ID)
+            self.fgp.groupby(LABEL_PLAYER_ID, group_keys=True)
             .apply(
                 lambda df: df.set_index(LABEL_DATETIME)
                 .resample("1T", closed="right", label="left")[[LABEL_SESSION, LABEL_GAMETIME, LABEL_BASE_ROLE]]
